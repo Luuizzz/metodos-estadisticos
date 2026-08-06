@@ -18,13 +18,15 @@ description: "aqui va algo, todavia de momento no sepo"
 library(tidyverse)
 library(dplyr)
 
+library(GGally)
+
 ````
 
 ```{r data}
 data<-read.csv("data/housing.csv")
 
 ```
-```{r}
+```{r fd}
 head(data,n=5)
 ```
 
@@ -42,7 +44,7 @@ data %>%
 
 ````
 
-```{r}
+```{r da}
 data %>% 
   mutate(across(
     where(is.numeric),
@@ -59,7 +61,7 @@ df %>%
 ```{r factorocean}
 df$ocean_proximity <- factor(df$ocean_proximity)
 ```
-```{r}
+```{r sd}
 df %>%  summarise (n=length(median_house_value),
                             media=mean(median_house_value),
                             sd=sd(median_house_value),
@@ -81,7 +83,7 @@ df %>%  summarise (n=length(median_house_value),
 df %>% 
   ggplot(aes(x=median_house_value))+
   geom_histogram(aes(y=after_stat(density)),
-                 binwith=2500,
+                 binwidth=25000,
                  fill="#0af1f5",
                  color="white",
                  alpha=0.6)+
@@ -90,7 +92,7 @@ df %>%
   y='densidad')+
         theme()
                                                         
-                                                        )
+                                                        
   
                  
   
@@ -186,5 +188,15 @@ summarise (n=length(median_house_value),
 df %>%
   ggplot(aes(x=ocean_proximity,y=median_house_value))+
   geom_boxplot()
+```
+```{r ggaly}
+df %>%
+  ggpairs()
+
+```
+```{r cd}
+png("mi_grafico.png", width = 4800, height = 4000, res = 300)  # 2400/300 = 8 pulgadas
+df %>% ggpairs()
+dev.off()
 ```
  
