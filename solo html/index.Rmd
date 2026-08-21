@@ -1,0 +1,312 @@
+--- 
+title: "Análisis de Factores Asociados al Mercado Inmobiliario"
+author: "Juan Luis Castillo"
+date: "`r Sys.Date()`"
+site: bookdown::bookdown_site
+output:
+  html_document:
+    theme: flatly
+    highlight: tango
+    toc: true
+    toc_float: true
+    code_folding: show
+    df_print: paged
+  bookdown::gitbook: default
+documentclass: book
+bibliography: [book.bib, packages.bib]
+biblio-style: apalike
+link-citations: yes
+github-repo: rstudio/bookdown-demo
+description: "Análisis exploratorio de datos de vivienda en California"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 10,
+  fig.height = 6,
+  fig.align = "center"
+)
+```
+
+
+
+````{r libreria, message=FALSE,warning=FALSE }
+library(tidyverse)
+library(dplyr)
+
+library(GGally)
+
+````
+
+```{r data}
+data<-read.csv("data/housing.csv")
+
+```
+```{r fd}
+head(data,n=5)
+```
+
+
+````{r estrcutura}
+str(data)
+
+````
+
+
+
+````{r faltantes}
+data %>% 
+   summarise(across(everything(),~ sum(is.na(.)),.names="NA_{.col}"))
+
+````
+
+```{r da}
+data %>% 
+  mutate(across(
+    where(is.numeric),
+    ~ ifelse(is.na(.),mean(.,na.rm=TRUE),.)
+  )) -> df
+```
+verifiquemos si tiene datos faltantes
+```{r faltante2}
+df %>% 
+   summarise(across(everything(),~ sum(is.na(.)),.names="NA_{.col}"))
+
+```
+
+```{r factorocean}
+df$ocean_proximity <- factor(df$ocean_proximity)
+```
+
+## Análisis Univariado
+
+### Variable Dependiente: Valor Medio de las Viviendas (`median_house_value`)
+
+A continuación, se presenta un resumen estadístico detallado y la distribución de la variable dependiente `median_house_value`.
+
+```{r sd}
+df %>%  summarise (n=length(median_house_value),
+                            media=mean(median_house_value),
+                            sd=sd(median_house_value),
+                            mediana=median(median_house_value),
+                            RIC=IQR(median_house_value),
+                            q1=quantile(median_house_value,0.25),
+                            q3=quantile(median_house_value,0.75),
+                            minimo=min(median_house_value),
+                            maximo=max(median_house_value)
+                            ) 
+```
+
+**Interpretación Estadística:**
+El conjunto de datos comprende un total de $N = 20,640$ registros de bloques habitacionales en el estado de California. La variable respuesta de interés, `median_house_value` (valor medio de las viviendas), presenta una media muestral de $\$206,855.8$ USD con una desviación estándar de $\$115,395.6$ USD, lo que evidencia una notable dispersión en las cotizaciones inmobiliarias.
+
+En cuanto a las medidas de posición:
+- La mediana se sitúa en $\$179,700$ USD, lo que indica que el $50\%$ de los bloques residenciales posee un valor de vivienda igual o menor a este límite.
+- El rango intercuartílico (RIC), comprendido entre el primer cuartil ($Q_1 = \$119,600$ USD) y el tercer cuartil ($Q_3 = \$264,725$ USD), confirma que la mitad central de las viviendas oscila dentro de este rango.
+- Los valores extremos muestran un mínimo registrado de $\$14,999$ USD y un máximo de $\$500,001$ USD.
+
+```{r hist_dep}
+df %>% 
+  ggplot(aes(x=median_house_value))+
+  geom_histogram(aes(y=after_stat(density)),
+                 binwidth=20000,
+                 fill="#1f77b4",
+                 color="white",
+                 alpha=0.7)+
+  geom_density(color="#d62728", linewidth=1.2)+
+  labs(title='Distribución del Valor Medio de las Viviendas',
+       x='Valor Medio de la Casa (USD)',
+       y='Densidad')+
+  theme_minimal()
+```
+
+```{r box_dep}
+df %>% 
+  ggplot(aes(x="", y=median_house_value))+
+  geom_boxplot(fill="#1f77b4", color="black", outlier.color = "#d62728", alpha=0.7)+
+  stat_summary(fun=mean, geom='point', shape=23, size=3, fill="white")+
+  labs(title='Diagrama de Caja de la Variable Dependiente',
+       y='Valor Medio de la Casa (USD)',
+       x='')+
+  theme_minimal()
+```
+
+**Interpretación de la Distribución:**
+La distribución de `median_house_value` exhibe un sesgo positivo (hacia la derecha). Además, se identifica una concentración atípica de frecuencias en el extremo superior de $\$500,001$ USD. Este comportamiento en el histograma y el diagrama de caja denota un proceso de truncamiento o censura a la derecha en la recopilación de datos, donde las viviendas con valores iguales o superiores a dicho umbral fueron codificadas bajo el valor estandarizado de $\$500,001$ USD.
+
+---
+
+### Variables Independientes Numéricas
+
+Evaluamos las características generales de los predictores cuantitativos.
+
+```{r resumen_independientes}
+df %>% 
+  select(where(is.numeric),-median_house_value) %>% 
+  pivot_longer(
+    cols=everything(),
+    names_to = 'variable',
+    values_to = 'valor'
+  ) %>% 
+  group_by(variable) %>% 
+  summarise (n=length(valor),
+             media=mean(valor),
+             sd=sd(valor),
+             mediana=median(valor),
+             RIC=IQR(valor),
+             q1=quantile(valor,0.25),
+             q3=quantile(valor,0.75),
+             minimo=min(valor),
+             maximo=max(valor)) 
+```
+
+A modo de ilustración univariada, graficamos el ingreso medio (`median_income`) y la edad media de la vivienda (`housing_median_age`), dos variables clave del modelo.
+
+```{r hist_income}
+df %>% 
+  ggplot(aes(x=median_income))+
+  geom_histogram(aes(y=after_stat(density)), binwidth=0.5, fill="#2ca02c", color="white", alpha=0.7)+
+  geom_density(color="darkgreen", linewidth=1)+
+  labs(title='Distribución del Ingreso Medio de los Hogares',
+       x='Ingreso Medio (Escala de Decenas de Miles de USD)',
+       y='Densidad')+
+  theme_minimal()
+```
+
+**Interpretación del Ingreso Medio:**
+La variable `median_income` muestra una distribución unimodal sesgada a la derecha. El rango intercuartílico sugiere que la mayor parte de las observaciones se agrupan en ingresos de entre $\$25,000$ y $\$65,000$ USD aproximados, con una cola larga hacia valores de ingresos elevados que representan a sectores residenciales de alta renta.
+
+```{r hist_age}
+df %>% 
+  ggplot(aes(x=housing_median_age))+
+  geom_histogram(binwidth=2, fill="#9467bd", color="white", alpha=0.7)+
+  labs(title='Distribución de la Edad Media de las Viviendas',
+       x='Edad Media de la Vivienda (Años)',
+       y='Frecuencia')+
+  theme_minimal()
+```
+
+**Interpretación de la Edad de las Viviendas:**
+La variable `housing_median_age` presenta una distribución relativamente uniforme, aunque con ligeros picos y una acumulación notable en el límite superior (cerca de los 52 años), lo que puede representar viviendas históricas o un efecto de truncamiento superior similar al observado en los precios de la vivienda.
+
+---
+
+### Variable Categórica: Proximidad al Océano (`ocean_proximity`)
+
+Analizamos la frecuencia relativa de la localización de los bloques con respecto al mar.
+
+```{r tabla_ocean}
+tabla_ocean_b <- df %>%
+  count(ocean_proximity,name="n") %>%
+  mutate(Porcentaje=round((n/sum(n))*100,1),
+         Etiqueta=paste0(n," (",Porcentaje,"%)"))
+
+tabla_ocean_b %>%
+  ggplot(aes(x=reorder(ocean_proximity, -n), y=n, fill=ocean_proximity))+
+  geom_col(width = 0.6, show.legend = FALSE)+
+  geom_text(aes(label=Etiqueta), vjust = -0.5, size = 4)+
+  labs(title='Distribución de Frecuencia: Proximidad al Océano',
+       x='Proximidad al Océano',
+       y='Número de Bloques (Frecuencia)')+
+  scale_fill_brewer(palette = "Set2")+
+  scale_y_continuous(expand = expansion(mult = c(0, 0.15)))+
+  theme_minimal()
+```
+
+**Interpretación de la Proximidad al Océano:**
+La categoría `<1H OCEAN` (menos de una hora del océano) es la predominante en la muestra con un $44.3\%$, seguida de `INLAND` (tierra adentro) con un $31.7\%$. En contraste, la presencia de observaciones en la categoría `ISLAND` es marginal ($5$ observaciones, $<0.1\%$), lo que indica una limitación de representatividad estadística para dicho nivel en análisis inferenciales posteriores.
+
+---
+
+## Análisis Bivariado (Independientes vs. Dependiente)
+
+### Gráficos de Dispersión y Relaciones Lineales
+
+Analizamos el comportamiento de la variable dependiente `median_house_value` ante variaciones en los principales predictores numéricos.
+
+```{r scatter_income}
+df %>%
+  ggplot(aes(x=median_income, y=median_house_value))+
+  geom_point(alpha = 0.3, color='#1f77b4')+
+  geom_smooth(method = "lm", color="#d62728", se=TRUE)+
+  labs(title='Relación entre Ingreso Medio y Valor de la Vivienda',
+       x='Ingreso Medio (Hogares)',
+       y='Valor Medio de la Vivienda (USD)')+
+  theme_minimal()
+```
+
+**Interpretación:**
+Existe una correlación lineal positiva y robusta entre el ingreso medio (`median_income`) y el valor medio de la vivienda (`median_house_value`). A medida que se incrementa el ingreso en el bloque, el precio medio del inmueble asciende de forma sistemática. La línea de regresión con pendiente positiva ilustra esta asociación. Asimismo, se evidencia la franja superior horizontal sólida en $\$500,001$ USD debido al truncamiento de datos.
+
+```{r scatter_age}
+df %>%
+  ggplot(aes(x=housing_median_age, y=median_house_value))+
+  geom_point(alpha = 0.15, color='#9467bd')+
+  geom_smooth(method = "lm", color="#d62728", se=TRUE)+
+  labs(title='Relación entre Edad de la Vivienda y Valor de la Vivienda',
+       x='Edad Media de la Vivienda (Años)',
+       y='Valor Medio de la Vivienda (USD)')+
+  theme_minimal()
+```
+
+**Interpretación:**
+La relación entre `housing_median_age` y `median_house_value` es débilmente positiva. Aunque la pendiente estimada por regresión lineal tiende al alza, existe una dispersión muy amplia en cada nivel de edad, lo que indica que la antigüedad del bloque por sí sola no determina el valor final de la vivienda de forma unívoca, sino que interactúa con otras características del entorno.
+
+---
+
+### Análisis Numérico vs. Categórico
+
+Evaluamos el comportamiento de `median_house_value` a través de los distintos grupos geográficos de la variable `ocean_proximity`.
+
+```{r box_ocean_value}
+df %>%
+  ggplot(aes(x=reorder(ocean_proximity, median_house_value, FUN = median), y=median_house_value, fill=ocean_proximity))+
+  geom_boxplot(show.legend = FALSE, alpha=0.8)+
+  labs(title='Distribución del Valor de la Vivienda por Proximidad al Océano',
+       x='Proximidad al Océano',
+       y='Valor Medio de la Vivienda (USD)')+
+  scale_fill_brewer(palette = "Set2")+
+  theme_minimal()
+```
+
+```{r summary_ocean_value}
+df %>% 
+  group_by(ocean_proximity) %>%
+  summarise (n=length(median_house_value),
+             media=mean(median_house_value),
+             sd=sd(median_house_value),
+             mediana=median(median_house_value),
+             RIC=IQR(median_house_value),
+             q1=quantile(median_house_value,0.25),
+             q3=quantile(median_house_value,0.75),
+             minimo=min(median_house_value),
+             maximo=max(median_house_value)) 
+```
+
+**Interpretación:**
+El análisis de distribución segmentado revela que las viviendas localizadas a menos de una hora del océano (`<1H OCEAN`), en bahías (`NEAR BAY`) o directamente frente al mar (`NEAR OCEAN`) ostentan medianas y promedios significativamente más elevados que aquellas clasificadas como de tierra adentro (`INLAND`). La categoría `ISLAND` cuenta con los valores más elevados, pero su escaso número muestral limita generalizaciones fiables. Este resultado preliminar valida la hipótesis de que la localización geográfica y la cercanía costera introducen una prima sustancial sobre el costo de la propiedad.
+
+---
+
+### Análisis de Colinealidad y Matriz de Correlación
+
+Para identificar posibles relaciones y colinealidad entre todas las variables continuas del modelo:
+
+```{r ggaly, message=FALSE, warning=FALSE}
+# Para evitar sobrecargar la compilación, se puede evaluar la correlación global
+# y graficar la matriz de correlación directamente.
+df_numeric <- df %>% select(where(is.numeric))
+cor_matrix <- cor(df_numeric, use = "complete.obs")
+round(cor_matrix, 2)
+```
+
+Para almacenar la matriz de dispersión visual completa de alta resolución:
+```{r cd}
+png("mi_grafico.png", width = 4800, height = 4000, res = 300)
+df %>% ggpairs()
+dev.off()
+```
+

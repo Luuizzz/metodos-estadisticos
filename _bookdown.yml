@@ -1,5 +1,9 @@
-book_filename: "bookdown-demo"
+book_filename: "metodos-estadisticos"
+delete_merged_file: true
+rmd_files:
+  - "index.Rmd"
+  - "01-intror.Rmd"
+
 language:
   ui:
     chapter_name: "Chapter "
-delete_merged_file: true

@@ -1,202 +1,27 @@
 --- 
-
-title: "Analisi factores asociados al mercado inmobiliario"
-author: "Juan Luis Castillo"
+title: "Factores asociados al mercado de casas en California"
+author: "Alejandro Cotes Fornaris,Juan Castillo Giovannetty"
 date: "`r Sys.Date()`"
+output:
+  bookdown::gitbook: default
+  html_document: default
 site: bookdown::bookdown_site
-output: bookdown::gitbook
 documentclass: book
-bibliography: [book.bib, packages.bib]
+bibliography:
+- book.bib
+- packages.bib
 biblio-style: apalike
-link-citations: yes
-github-repo: rstudio/bookdown-demo
-description: "aqui va algo, todavia de momento no sepo"
+link-citations: true
+github-repo: "rstudio/bookdown-demo"
+description: En este proyecto se buscara predecir el precio de las casas en California
 ---
 
-
-````{r libreria, message=FALSE,warning=FALSE }
-library(tidyverse)
-library(dplyr)
-
-library(GGally)
-
-````
-
-```{r data}
-data<-read.csv("data/housing.csv")
-
-```
-```{r fd}
-head(data,n=5)
+```{r eval=FALSE}
+install.packages("rsconnect")
+install.packages("bookdown")
+# or the development version
+# devtools::install_github("rstudio/bookdown")
 ```
 
-
-````{r estrcutura}
-str(data)
-
-````
-
-
-
-````{r faltantes}
-data %>% 
-   summarise(across(everything(),~ sum(is.na(.)),.names="NA_{.col}"))
-
-````
-
-```{r da}
-data %>% 
-  mutate(across(
-    where(is.numeric),
-    ~ ifelse(is.na(.),mean(.,na.rm=TRUE),.)
-  )) -> df
-```
-verifiquemos si tiene datos faltantes
-```{r faltante2}
-df %>% 
-   summarise(across(everything(),~ sum(is.na(.)),.names="NA_{.col}"))
-
-```
-
-```{r factorocean}
-df$ocean_proximity <- factor(df$ocean_proximity)
-```
-```{r sd}
-df %>%  summarise (n=length(median_house_value),
-                            media=mean(median_house_value),
-                            sd=sd(median_house_value),
-                            mediana=median(median_house_value),
-                            RIC=IQR(median_house_value),
-                            q1=quantile(median_house_value,0.25),
-                            q3=quantile(median_house_value,0.75),
-                            minimo=min(median_house_value),
-                            maximo=max(median_house_value)
-                            
-                            
-                            ) 
-```
- 
- Hay un numero total de 20640 casas en la zona de California. Las cuales poseen un valor medio individual de 206855.8 USD, este valor medio presenta una desviacion estandar de cerca de 115395.6 USD. 
- El 50% de el valor de las casas es igual o menor a 179700 USD. El valor mas bajo listado de 14999 dolares, siendo el precio mayor de cerca de 500001 dolares. El 25% de los valores es menor igual a 119600 dolares, y hasta el 75% de los precios listados llegan hasta los 264725.
- 
-```{r}
-df %>% 
-  ggplot(aes(x=median_house_value))+
-  geom_histogram(aes(y=after_stat(density)),
-                 binwidth=25000,
-                 fill="#0af1f5",
-                 color="white",
-                 alpha=0.6)+
-      geom_density(color="darkblue",linewidth=1.2)+labs(title='Distribucion del valor medio de las viviendas',
-  x='valor medio de la casa(USD)',
-  y='densidad')+
-        theme()
-                                                        
-                                                        
-  
-                 
-  
-```
- 
- 
-```{r}
-df %>% 
-  ggplot(aes(y="",x=median_house_value))+
-  geom_boxplot(fill="#0af1f5",color="black",outlier.color = "darkred")+
-  stat_summary(fun=mean,geom='point',shape=20)+
-  theme_bw()
-
-  
-  
-```
- 
- ## Analisis de las variables independientes (caracteristicas)
- 
-```{r}
-df %>% 
-  select(where(is.numeric),-median_house_value) %>% 
-  pivot_longer(
-    cols=everything(),
-    names_to = 'variable',
-    values_to = 'valor',
-    
-  ) %>% 
-  group_by(variable) %>% 
-  summarise (n=length(valor),
-                            media=mean(valor),
-                            sd=sd(valor),
-                            mediana=median(valor),
-                            RIC=IQR(valor),
-                            q1=quantile(valor,0.25),
-                            q3=quantile(valor,0.75),
-                            minimo=min(valor),
-                            maximo=max(valor)) 
-  
-
-
-```
-```{r}
-tabla_ocean_b <- df %>%
-  count(ocean_proximity,name="n") %>%
-  mutate(Porcentaje=round((n/sum(n))*100,1),
-         Etiqueta=paste0(n,"(",Porcentaje,"%)"))
-
-
-tabla_ocean_b %>%
-  ggplot(aes(x=ocean_proximity,y=n))+
-  geom_col(fill="lightgreen",width = 0.6)+
-  geom_text(aes(label=Etiqueta),vjust = 0.6,size = 4.5)+
-  facet_wrap(~'Distribucion de la variable ocean proximity')+
-  scale_y_continuous(expand = expansion(mult =c(0,0.15)))+
-  theme_bw()
-  
-```
-
-```{r valoresingreso}
-df %>%
-  ggplot(aes(x=median_income,y=median_house_value))+
-  geom_point(alpha = 0.4,color='darkblue')+
-    labs(y='Valor medio de la vivienda',
-         x='ingreso medio')+
-    theme_bw()+
-    facet_grid(.~'Dispersion entre ingreso mmedio y el valor medio de la vivienda')
-    
-
-```
-
- 
- ahora comparamos el valor medio de la vivienda segun la proximidad al oceano
- 
-```{r bivalorvsoceano}
-
-df %>% 
-  group_by(ocean_proximity) %>%
-summarise (n=length(median_house_value),
-                            media=mean(median_house_value),
-                            sd=sd(median_house_value),
-                            mediana=median(median_house_value),
-                            RIC=IQR(median_house_value),
-                            q1=quantile(median_house_value,0.25),
-                            q3=quantile(median_house_value,0.75),
-                            minimo=min(median_house_value),
-                            maximo=max(median_house_value)
-                            
-                            
-                            ) 
-```
-```{r}
-df %>%
-  ggplot(aes(x=ocean_proximity,y=median_house_value))+
-  geom_boxplot()
-```
-```{r ggaly}
-df %>%
-  ggpairs()
-
-```
-```{r cd}
-png("mi_grafico.png", width = 4800, height = 4000, res = 300)  # 2400/300 = 8 pulgadas
-df %>% ggpairs()
-dev.off()
-```
- 
+# Contexto del problema {-}
+El mercado de la vivienda presenta grandes diferencias de precios entre distintas zonas, debido a factores relacionados con la ubicación, las características de las viviendas y las condiciones demográficas y económicas de cada distrito. En este proyecto se analizan datos de viviendas de California con el propósito de comprender cómo se comportan estas características y cómo se relacionan con el valor mediano de las viviendas. Mediante un análisis exploratorio de datos e ingeniería de características se busca identificar patrones relevantes, detectar posibles problemas en las variables y generar nuevas características que representen mejor la información disponible.

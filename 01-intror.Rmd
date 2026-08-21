@@ -1,0 +1,887 @@
+# EDA{#intro}
+Cargamos las librerías necesarias para el análisis.
+
+```{r libreria, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(dplyr)
+library(Amelia)
+library(moments)
+library(GGally)
+library(patchwork)
+```
+
+```{r data}
+data <- read.csv("data/housing.csv")
+```
+
+Mostramos las 5 primeras filas.
+
+```{r primeras_filas}
+head(data, n=5)
+```
+
+La estructura de los datos.
+
+```{r estructura}
+str(data)
+```
+
+Veamos si hay datos faltantes.
+
+```{r faltantes}
+data %>%
+  summarise(across(everything(), ~ sum(is.na(.)), .names = "NA_{.col}"))
+```
+
+Otra forma de detectar valores faltantes.
+
+```{r otraforma}
+missmap(data)
+```
+
+Realizamos la imputación de los datos faltantes numéricos mediante la media.
+
+```{r imp}
+data %>%
+  mutate(across(where(is.numeric), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .))) -> df
+```
+
+```{r faltante_2}
+df %>%
+  summarise(across(everything(), ~ sum(is.na(.)), .names = "NA_{.col}"))
+```
+
+Convertimos `ocean_proximity` en factor.
+
+```{r factorocean}
+df$ocean_proximity <- factor(df$ocean_proximity)
+```
+
+## Análisis exploratorio de `median_house_value` (target)
+
+```{r resumen_target}
+df %>%
+  summarise(
+    n = length(median_house_value),
+    media = mean(median_house_value),
+    sd = sd(median_house_value),
+    mediana = median(median_house_value),
+    RIC = IQR(median_house_value),
+    Q1 = quantile(median_house_value, 0.25),
+    Q3 = quantile(median_house_value, 0.75),
+    minimo = min(median_house_value),
+    maximo = max(median_house_value),
+    asimetria = skewness(median_house_value),
+    curtosis = kurtosis(median_house_value)
+  )
+```
+
+El valor medio de la vivienda presenta una distribución con asimetría positiva: la mayoría de las observaciones se concentra en precios bajos e intermedios y existe una cola hacia precios altos. Además, se observa una acumulación en el límite superior de 500001 USD, lo que indica que el valor objetivo está topado en ese punto. La media queda por encima de la mediana debido a esa cola derecha.
+
+```{r hist_target}
+df %>%
+  ggplot(aes(x=median_house_value))+
+  geom_histogram(aes(y=after_stat(density)), binwidth=25000, fill="#797bb0", color="white", alpha=0.6)+
+  geom_density(color="darkblue", linewidth=1.2)+
+  labs(title="Distribución del valor medio de las viviendas", x="Valor medio de la casa (USD)", y="Densidad")+
+  theme_bw()
+```
+
+**Interpretación del histograma:** La mayor densidad se encuentra en los precios bajos y medios y disminuye hacia la derecha. El pico final alrededor de 500001 USD no debe interpretarse como un único dato atípico, sino como una acumulación causada por el límite superior con el que fue registrada la variable. La forma general confirma una asimetría positiva.
+
+```{r box_target}
+df %>%
+  ggplot(aes(y="", x=median_house_value))+
+  geom_boxplot(fill="#797bb0", color="black", outlier.color="red")+
+  stat_summary(fun=mean, geom="point", shape=20, size=3, color="darkblue")+
+  theme_bw()
+```
+
+**Interpretación del boxplot:** La mediana se encuentra desplazada hacia la parte inferior del rango y aparecen numerosos valores por encima del límite superior del boxplot. Esto confirma que la cola se extiende hacia precios altos. La acumulación cercana al máximo del conjunto también contribuye a que existan muchos puntos señalados como atípicos estadísticos.
+
+## Analisis de las variables independientes (características)
+
+```{r resumen_independientes}
+df %>%
+  select(where(is.numeric), -median_house_value) %>%
+  pivot_longer(cols=everything(), names_to="variable", values_to="valor") %>%
+  group_by(variable) %>%
+  summarise(
+    n=length(valor), media=mean(valor), sd=sd(valor), mediana=median(valor),
+    RIC=IQR(valor), Q1=quantile(valor,0.25), Q3=quantile(valor,0.75),
+    minimo=min(valor), maximo=max(valor), asimetria=skewness(valor),
+    curtosis=kurtosis(valor)
+  )
+```
+
+Cada variable se interpreta por separado mediante su histograma y su boxplot.
+
+### Histogramas de las variables independientes
+
+```{r hist_households}
+df %>%
+  ggplot(aes(x=households))+
+  geom_histogram(aes(y=after_stat(density)), binwidth=100, fill="#797bb0", color="white", alpha=0.6)+
+  geom_density(color="darkblue", linewidth=1.1)+theme_bw()
+```
+
+**Interpretación:** El número de hogares presenta una distribución asimétrica hacia la derecha. La mayoría de los distritos se concentra en cantidades relativamente bajas de hogares y existe una cola hacia valores elevados, correspondiente a distritos de mayor tamaño.
+
+```{r hist_housing_median_age}
+df %>%
+  ggplot(aes(x=housing_median_age))+
+  geom_histogram(aes(y=after_stat(density)), binwidth=2, fill="#797bb0", color="white", alpha=0.6)+
+  geom_density(color="darkblue", linewidth=1.1)+theme_bw()
+```
+
+**Interpretación:** La antigüedad mediana de las viviendas se distribuye a lo largo de un rango amplio y presenta acumulación cerca de su límite superior. Esto sugiere que la variable posee un valor máximo de registro para los distritos con viviendas más antiguas.
+
+```{r hist_latitude}
+df %>%
+  ggplot(aes(x=latitude))+
+  geom_histogram(aes(y=after_stat(density)), binwidth=0.5, fill="#797bb0", color="white", alpha=0.6)+
+  geom_density(color="darkblue", linewidth=1.1)+theme_bw()
+```
+
+**Interpretación:** La latitud presenta varios grupos de concentración en lugar de una distribución normal. Este comportamiento responde a la ubicación geográfica de los distritos y a la concentración de observaciones en determinadas zonas de California.
+
+```{r hist_longitude}
+df %>%
+  ggplot(aes(x=longitude))+
+  geom_histogram(aes(y=after_stat(density)), binwidth=0.5, fill="#797bb0", color="white", alpha=0.6)+
+  geom_density(color="darkblue", linewidth=1.1)+theme_bw()
+```
+
+**Interpretación:** La longitud también presenta agrupaciones claramente definidas asociadas con la distribución geográfica de los distritos. Por tratarse de una coordenada espacial, sus concentraciones representan zonas con mayor presencia de observaciones.
+
+```{r hist_median_income}
+df %>%
+  ggplot(aes(x=median_income))+
+  geom_histogram(aes(y=after_stat(density)), binwidth=0.5, fill="#797bb0", color="white", alpha=0.6)+
+  geom_density(color="darkblue", linewidth=1.1)+theme_bw()
+```
+
+**Interpretación:** El ingreso mediano presenta asimetría positiva. La mayoría de los distritos se concentra en ingresos bajos e intermedios, mientras una cantidad menor alcanza niveles considerablemente altos.
+
+```{r hist_population}
+df %>%
+  ggplot(aes(x=population))+
+  geom_histogram(aes(y=after_stat(density)), binwidth=500, fill="#797bb0", color="white", alpha=0.6)+
+  geom_density(color="darkblue", linewidth=1.1)+theme_bw()
+```
+
+**Interpretación:** La población presenta una fuerte asimetría hacia la derecha. La mayor parte de los distritos tiene poblaciones relativamente pequeñas y unos pocos alcanzan cantidades muy elevadas.
+
+```{r hist_total_bedrooms}
+df %>%
+  ggplot(aes(x=total_bedrooms))+
+  geom_histogram(aes(y=after_stat(density)), binwidth=100, fill="#797bb0", color="white", alpha=0.6)+
+  geom_density(color="darkblue", linewidth=1.1)+theme_bw()
+```
+
+**Interpretación:** El total de dormitorios se concentra principalmente en valores bajos y medios, acompañado de una cola extensa hacia valores altos. La forma de la distribución refleja las diferencias de tamaño entre los distritos.
+
+```{r hist_total_rooms}
+df %>%
+  ggplot(aes(x=total_rooms))+
+  geom_histogram(aes(y=after_stat(density)), binwidth=500, fill="#797bb0", color="white", alpha=0.6)+
+  geom_density(color="darkblue", linewidth=1.1)+theme_bw()
+```
+
+**Interpretación:** El total de habitaciones presenta una distribución fuertemente asimétrica hacia la derecha. La mayoría de los distritos posee cantidades moderadas, mientras unos pocos distritos presentan cantidades considerablemente superiores.
+
+### Boxplots de las variables independientes
+
+```{r boxplots_independientes}
+df %>%
+  ggplot(aes(y=households, x=""))+
+  geom_boxplot(fill="#797bb0", color="black", outlier.color="red")+
+  stat_summary(fun=mean, geom="point", shape=20, size=3, color="darkblue")+theme_bw()->p1
+
+df %>%
+  ggplot(aes(y=housing_median_age, x=""))+
+  geom_boxplot(fill="#797bb0", color="black", outlier.color="red")+
+  stat_summary(fun=mean, geom="point", shape=20, size=3, color="darkblue")+theme_bw()->p2
+
+df %>%
+  ggplot(aes(y=latitude, x=""))+
+  geom_boxplot(fill="#797bb0", color="black", outlier.color="red")+
+  stat_summary(fun=mean, geom="point", shape=20, size=3, color="darkblue")+theme_bw()->p3
+
+df %>%
+  ggplot(aes(y=longitude, x=""))+
+  geom_boxplot(fill="#797bb0", color="black", outlier.color="red")+
+  stat_summary(fun=mean, geom="point", shape=20, size=3, color="darkblue")+theme_bw()->p4
+
+df %>%
+  ggplot(aes(y=median_income, x=""))+
+  geom_boxplot(fill="#797bb0", color="black", outlier.color="red")+
+  stat_summary(fun=mean, geom="point", shape=20, size=3, color="darkblue")+theme_bw()->p5
+
+df %>%
+  ggplot(aes(y=population, x=""))+
+  geom_boxplot(fill="#797bb0", color="black", outlier.color="red")+
+  stat_summary(fun=mean, geom="point", shape=20, size=3, color="darkblue")+theme_bw()->p6
+
+df %>%
+  ggplot(aes(y=total_bedrooms, x=""))+
+  geom_boxplot(fill="#797bb0", color="black", outlier.color="red")+
+  stat_summary(fun=mean, geom="point", shape=20, size=3, color="darkblue")+theme_bw()->p7
+
+df %>%
+  ggplot(aes(y=total_rooms, x=""))+
+  geom_boxplot(fill="#797bb0", color="black", outlier.color="red")+
+  stat_summary(fun=mean, geom="point", shape=20, size=3, color="darkblue")+theme_bw()->p8
+```
+
+**Interpretación de `households`:** El boxplot muestra numerosos valores superiores fuera del rango intercuartílico, coherentes con distritos que contienen una cantidad de hogares mucho mayor que la mayoría.
+
+**Interpretación de `housing_median_age`:** La antigüedad mediana presenta una dispersión más equilibrada y no está dominada por una gran cantidad de valores extremos. La acumulación superior responde al límite observado en la variable.
+
+**Interpretación de `latitude`:** La dispersión corresponde a las diferentes posiciones geográficas de los distritos. Los extremos representan ubicaciones alejadas del centro de la distribución y no necesariamente errores en los datos.
+
+**Interpretación de `longitude`:** La longitud se mantiene dentro del rango geográfico esperado del conjunto. Sus extremos representan posiciones espaciales diferentes y deben conservarse para el análisis.
+
+**Interpretación de `median_income`:** Se observan valores atípicos superiores, coherentes con la asimetría positiva de la variable y con la presencia de distritos de ingresos considerablemente mayores.
+
+**Interpretación de `population`:** El boxplot evidencia numerosos valores altos fuera del rango central, confirmando la fuerte asimetría positiva y la existencia de distritos con poblaciones mucho mayores.
+
+**Interpretación de `total_bedrooms`:** Se observan numerosos valores atípicos superiores. Al ser una cantidad absoluta, estos casos corresponden principalmente a distritos de mayor tamaño y posteriormente se analizarán mediante una medida relativa.
+
+**Interpretación de `total_rooms`:** El boxplot confirma una cola superior extensa y numerosos valores alejados del rango intercuartílico. Esto refleja la heterogeneidad en el tamaño de los distritos.
+
+```{r boxplots_juntos}
+p1+p2+p3+p4+p5+p6+p7+p8
+```
+
+**Interpretación conjunta:** Los boxplots muestran que `total_rooms`, `total_bedrooms`, `population` y `households` poseen distribuciones especialmente asimétricas y numerosos valores altos. Estas cuatro características son cantidades absolutas relacionadas con el tamaño de los distritos, mientras las variables geográficas y `housing_median_age` presentan rangos más acotados.
+
+## Análisis univariado de la variable categórica `ocean_proximity`
+
+```{r oceanproximity}
+tabla_ocean_b <- df %>%
+  count(ocean_proximity, name="n") %>%
+  mutate(Porcentaje=round((n/sum(n))*100,2),
+         Etiqueta=paste0(n," (",Porcentaje,"%)"))
+
+tabla_ocean_b %>%
+  ggplot(aes(x=ocean_proximity, y=n))+
+  geom_col(fill="#008b08", width=0.6)+
+  geom_text(aes(label=Etiqueta), vjust=-0.5, size=4.0)+
+  facet_wrap(~"Distribución de la variable ocean_proximity")+
+  scale_y_continuous(expand=expansion(mult=c(0,0.15)))+
+  labs(x="Proximidad al océano", y="Frecuencia")+
+  theme_bw()
+```
+
+**Interpretación:** La categoría más frecuente es `<1H OCEAN`, seguida por `INLAND` y `NEAR OCEAN`. `NEAR BAY` tiene una frecuencia menor y `ISLAND` aparece únicamente en 5 observaciones. Por tanto, la variable categórica está claramente desbalanceada y las conclusiones sobre `ISLAND` deben tomarse con cautela debido a su tamaño extremadamente pequeño.
+
+## Análisis bivariado: variables independientes numéricas vs. variable dependiente
+
+A continuación se compara cada característica numérica con `median_house_value` mediante gráficos de dispersión. La interpretación se realiza a partir de los patrones observados en los gráficos de dispersión.
+
+### `longitude` vs. `median_house_value`
+
+```{r scatter_longitude}
+df %>%
+  ggplot(aes(x=longitude, y=median_house_value))+
+  geom_point(alpha=0.4, color="darkblue")+
+  labs(y="Valor medio de la vivienda", x="Longitud")+
+  theme_bw()+
+  facet_grid(.~"Dispersión entre longitud y valor medio de vivienda")
+```
+
+**Interpretación:** La nube de puntos entre longitud y valor medio de la vivienda no sigue una línea recta clara. Se observan concentraciones de precios diferentes según determinadas longitudes, lo que sugiere que la ubicación geográfica influye de forma compleja y que la relación debe interpretarse junto con la latitud y la proximidad al océano.
+
+### `latitude` vs. `median_house_value`
+
+```{r scatter_latitude}
+df %>%
+  ggplot(aes(x=latitude, y=median_house_value))+
+  geom_point(alpha=0.4, color="darkblue")+
+  labs(y="Valor medio de la vivienda", x="Latitud")+
+  theme_bw()+
+  facet_grid(.~"Dispersión entre latitud y valor medio de vivienda")
+```
+
+**Interpretación:** La dispersión entre latitud y valor de la vivienda muestra agrupaciones y cambios de nivel según la ubicación. No se aprecia una tendencia lineal única; en cambio, ciertas franjas de latitud concentran viviendas de mayor valor. Esto indica un efecto geográfico que no puede resumirse únicamente como aumento o disminución constante.
+
+### `housing_median_age` vs. `median_house_value`
+
+```{r scatter_housing_median_age}
+df %>%
+  ggplot(aes(x=housing_median_age, y=median_house_value))+
+  geom_point(alpha=0.4, color="darkblue")+
+  labs(y="Valor medio de la vivienda", x="Antigüedad mediana de la vivienda")+
+  theme_bw()+
+  facet_grid(.~"Dispersión entre antigüedad mediana de la vivienda y valor medio de vivienda")
+```
+
+**Interpretación:** La edad mediana de las viviendas muestra una relación visual débil con el valor de la vivienda. Los precios aparecen muy dispersos para prácticamente todas las edades, aunque algunos grupos de viviendas más antiguas alcanzan valores altos. Por sí sola, esta característica no parece separar claramente los precios.
+
+### `total_rooms` vs. `median_house_value`
+
+```{r scatter_total_rooms}
+df %>%
+  ggplot(aes(x=total_rooms, y=median_house_value))+
+  geom_point(alpha=0.4, color="darkblue")+
+  labs(y="Valor medio de la vivienda", x="Total de habitaciones")+
+  theme_bw()+
+  facet_grid(.~"Dispersión entre total de habitaciones y valor medio de vivienda")
+```
+
+**Interpretación:** El gráfico muestra mucha dispersión: distritos con cantidades similares de habitaciones pueden tener valores de vivienda muy diferentes. También se observa que los valores absolutos de habitaciones aumentan con el tamaño del distrito, por lo que esta variable puede resultar más informativa al expresarse de forma relativa por hogar.
+
+### `total_bedrooms` vs. `median_house_value`
+
+```{r scatter_total_bedrooms}
+df %>%
+  ggplot(aes(x=total_bedrooms, y=median_house_value))+
+  geom_point(alpha=0.4, color="darkblue")+
+  labs(y="Valor medio de la vivienda", x="Total de dormitorios")+
+  theme_bw()+
+  facet_grid(.~"Dispersión entre total de dormitorios y valor medio de vivienda")
+```
+
+**Interpretación:** La cantidad total de dormitorios tampoco presenta una relación lineal clara con el valor de la vivienda. La mayor densidad de observaciones se concentra en valores bajos de dormitorios y existe una cola de distritos grandes. Al ser una medida absoluta, resulta razonable compararla proporcionalmente con el total de habitaciones.
+
+### `population` vs. `median_house_value`
+
+```{r scatter_population}
+df %>%
+  ggplot(aes(x=population, y=median_house_value))+
+  geom_point(alpha=0.4, color="darkblue")+
+  labs(y="Valor medio de la vivienda", x="Población")+
+  theme_bw()+
+  facet_grid(.~"Dispersión entre población y valor medio de vivienda")
+```
+
+**Interpretación:** La población muestra una nube muy concentrada en valores bajos y una dispersión amplia del precio dentro de ese rango. Los distritos con poblaciones muy altas no implican necesariamente viviendas más costosas. Esto sugiere que una medida de habitantes por hogar puede representar mejor la intensidad poblacional.
+
+### `households` vs. `median_house_value`
+
+```{r scatter_households}
+df %>%
+  ggplot(aes(x=households, y=median_house_value))+
+  geom_point(alpha=0.4, color="darkblue")+
+  labs(y="Valor medio de la vivienda", x="Número de hogares")+
+  theme_bw()+
+  facet_grid(.~"Dispersión entre número de hogares y valor medio de vivienda")
+```
+
+**Interpretación:** El número de hogares presenta un patrón similar al de otras medidas de tamaño: la mayor parte de los datos se agrupa en valores bajos y los precios varían ampliamente. Como hogares, habitaciones, dormitorios y población crecen conjuntamente en distritos grandes, conviene construir variables relativas que reduzcan ese efecto de escala.
+
+### `median_income` vs. `median_house_value`
+
+```{r scatter_median_income}
+df %>%
+  ggplot(aes(x=median_income, y=median_house_value))+
+  geom_point(alpha=0.4, color="darkblue")+
+  labs(y="Valor medio de la vivienda", x="Ingreso mediano")+
+  theme_bw()+
+  facet_grid(.~"Dispersión entre ingreso mediano y valor medio de vivienda")
+```
+
+**Interpretación:** El ingreso mediano presenta la tendencia visual más clara respecto al valor de la vivienda: a medida que aumenta el ingreso, los precios tienden a ubicarse en niveles superiores. Aun así, existe dispersión y un límite visible en el valor máximo de la vivienda, por lo que la relación no es perfecta.
+
+## Análisis bivariado: variable categórica vs. variables numéricas
+
+Ahora se compara `ocean_proximity` con cada variable numérica mediante boxplots para observar diferencias de distribución entre categorías.
+
+### `ocean_proximity` vs. `longitude`
+
+```{r box_ocean_longitude}
+df %>%
+  ggplot(aes(x=ocean_proximity, y=longitude))+
+  geom_boxplot(fill="#797bb0", outlier.color="red")+
+  labs(x="Proximidad al océano", y="Longitud", title="Longitud según proximidad al océano")+
+  theme_bw()
+```
+
+**Interpretación:** Las distribuciones de longitud cambian claramente entre categorías de proximidad al océano, algo esperado porque ambas variables describen ubicación. Las categorías costeras se concentran en longitudes distintas de las zonas interiores, mientras ISLAND aparece en un rango muy reducido.
+
+### `ocean_proximity` vs. `latitude`
+
+```{r box_ocean_latitude}
+df %>%
+  ggplot(aes(x=ocean_proximity, y=latitude))+
+  geom_boxplot(fill="#797bb0", outlier.color="red")+
+  labs(x="Proximidad al océano", y="Latitud", title="Latitud según proximidad al océano")+
+  theme_bw()
+```
+
+**Interpretación:** La latitud también varía según ocean_proximity. Las cajas muestran que las categorías ocupan zonas geográficas diferentes, por lo que la proximidad al océano resume parcialmente información espacial contenida en latitud y longitud.
+
+### `ocean_proximity` vs. `housing_median_age`
+
+```{r box_ocean_housing_median_age}
+df %>%
+  ggplot(aes(x=ocean_proximity, y=housing_median_age))+
+  geom_boxplot(fill="#797bb0", outlier.color="red")+
+  labs(x="Proximidad al océano", y="Antigüedad mediana de la vivienda", title="Antigüedad mediana de la vivienda según proximidad al océano")+
+  theme_bw()
+```
+
+**Interpretación:** La edad de las viviendas presenta diferencias moderadas entre categorías. Algunas zonas próximas al océano muestran medianas de antigüedad mayores, mientras las zonas interiores concentran viviendas relativamente más recientes. Sin embargo, existe solapamiento considerable entre grupos.
+
+### `ocean_proximity` vs. `total_rooms`
+
+```{r box_ocean_total_rooms}
+df %>%
+  ggplot(aes(x=ocean_proximity, y=total_rooms))+
+  geom_boxplot(fill="#797bb0", outlier.color="red")+
+  labs(x="Proximidad al océano", y="Total de habitaciones", title="Total de habitaciones según proximidad al océano")+
+  theme_bw()
+```
+
+**Interpretación:** El total de habitaciones presenta alta dispersión dentro de todas las categorías y numerosos valores elevados. Las diferencias entre grupos están influenciadas por el tamaño de los distritos, por lo que comparar únicamente cantidades absolutas puede ocultar patrones más útiles.
+
+### `ocean_proximity` vs. `total_bedrooms`
+
+```{r box_ocean_total_bedrooms}
+df %>%
+  ggplot(aes(x=ocean_proximity, y=total_bedrooms))+
+  geom_boxplot(fill="#797bb0", outlier.color="red")+
+  labs(x="Proximidad al océano", y="Total de dormitorios", title="Total de dormitorios según proximidad al océano")+
+  theme_bw()
+```
+
+**Interpretación:** Los dormitorios totales muestran una situación similar a total_rooms: existe bastante solapamiento entre categorías y una fuerte presencia de valores altos. Esto refuerza la conveniencia de expresar dormitorios como proporción del total de habitaciones.
+
+### `ocean_proximity` vs. `population`
+
+```{r box_ocean_population}
+df %>%
+  ggplot(aes(x=ocean_proximity, y=population))+
+  geom_boxplot(fill="#797bb0", outlier.color="red")+
+  labs(x="Proximidad al océano", y="Población", title="Población según proximidad al océano")+
+  theme_bw()
+```
+
+**Interpretación:** La población varía ampliamente dentro de cada categoría de proximidad. Las zonas interiores contienen varios distritos de gran población, pero existe solapamiento entre categorías. Una medida relativa por hogar puede facilitar la comparación entre distritos de tamaños distintos.
+
+### `ocean_proximity` vs. `households`
+
+```{r box_ocean_households}
+df %>%
+  ggplot(aes(x=ocean_proximity, y=households))+
+  geom_boxplot(fill="#797bb0", outlier.color="red")+
+  labs(x="Proximidad al océano", y="Número de hogares", title="Número de hogares según proximidad al océano")+
+  theme_bw()
+```
+
+**Interpretación:** El número de hogares presenta gran dispersión y valores extremos en varias categorías. Las diferencias observadas dependen en buena parte del tamaño de cada distrito, por lo que hogares funciona mejor como denominador para construir indicadores relativos que como medida aislada de escala.
+
+### `ocean_proximity` vs. `median_income`
+
+```{r box_ocean_median_income}
+df %>%
+  ggplot(aes(x=ocean_proximity, y=median_income))+
+  geom_boxplot(fill="#797bb0", outlier.color="red")+
+  labs(x="Proximidad al océano", y="Ingreso mediano", title="Ingreso mediano según proximidad al océano")+
+  theme_bw()
+```
+
+**Interpretación:** El ingreso mediano sí muestra diferencias visibles entre categorías de proximidad al océano. Las zonas costeras e ISLAND tienden a concentrar ingresos más altos que INLAND, aunque las distribuciones se superponen. Esto sugiere que ubicación e ingreso pueden aportar información complementaria sobre el valor de la vivienda.
+
+### `ocean_proximity` vs. `median_house_value`
+
+```{r resumen_target_oceano}
+df %>%
+  group_by(ocean_proximity) %>%
+  summarise(
+    n=length(median_house_value),
+    media=mean(median_house_value),
+    sd=sd(median_house_value),
+    mediana=median(median_house_value),
+    RIC=IQR(median_house_value),
+    Q1=quantile(median_house_value,0.25),
+    Q3=quantile(median_house_value,0.75),
+    minimo=min(median_house_value),
+    maximo=max(median_house_value),
+    asimetria=skewness(median_house_value),
+    curtosis=kurtosis(median_house_value)
+  )
+```
+
+```{r box_ocean_median_house_value}
+df %>%
+  ggplot(aes(x=ocean_proximity, y=median_house_value))+
+  geom_boxplot(fill="#797bb0", outlier.color="red")+
+  labs(x="Proximidad al océano", y="Valor medio de la vivienda", title="Valor medio de la vivienda según proximidad al océano")+
+  theme_bw()
+```
+
+**Interpretación:** El valor medio de la vivienda cambia de forma visible según la proximidad al océano. Las categorías cercanas a la costa presentan, en general, niveles centrales de precio superiores a INLAND, mientras ISLAND contiene muy pocas observaciones. La amplitud de las cajas muestra que la proximidad al océano no explica por sí sola toda la variación del precio.
+
+## Exploración conjunta con `ggpairs()`
+
+Se utiliza `ggpairs()` para inspeccionar visualmente las posibles relaciones entre las variables numéricas. Los paneles continuos se representan mediante gráficos de puntos para identificar patrones conjuntos entre las características.
+
+```{r ggally, fig.width=14, fig.height=14}
+df %>%
+  select(where(is.numeric)) %>%
+  ggpairs(
+    upper=list(continuous=wrap("points", alpha=0.15, size=0.3)),
+    lower=list(continuous=wrap("points", alpha=0.15, size=0.3)),
+    diag=list(continuous="densityDiag")
+  )
+```
+
+**Interpretación:** En la matriz se observan visualmente relaciones muy marcadas entre `total_rooms`, `total_bedrooms`, `population` y `households`. Estas variables son cantidades absolutas asociadas al tamaño de cada distrito: cuando un distrito contiene más hogares, normalmente también contiene más habitaciones, dormitorios y habitantes. Debido a este patrón visual, mantener únicamente las cantidades absolutas puede repetir información de escala. Por ello se propone ingeniería de características mediante ratios que describan la composición interna de cada distrito.
+
+## Ingeniería de características mediante ratios
+
+A partir de los patrones observados en `ggpairs()`, se crean tres variables relativas que permiten representar la información en función del tamaño y la composición de cada distrito.
+
+```{r ratios}
+df <- df %>%
+  mutate(
+    rooms_per_household = total_rooms / households,
+    bedrooms_per_room = total_bedrooms / total_rooms,
+    population_per_household = population / households
+  )
+```
+
+`rooms_per_household` representa cuántas habitaciones corresponden en promedio a cada hogar; `bedrooms_per_room` representa qué proporción de las habitaciones corresponde a dormitorios; y `population_per_household` representa cuántas personas corresponden en promedio a cada hogar.
+
+### Resumen estadístico de las nuevas variables
+
+```{r resumen_ratios}
+df %>%
+  select(rooms_per_household, bedrooms_per_room, population_per_household) %>%
+  pivot_longer(cols=everything(), names_to="variable", values_to="valor") %>%
+  group_by(variable) %>%
+  summarise(
+    n=length(valor), media=mean(valor), sd=sd(valor), mediana=median(valor),
+    RIC=IQR(valor), Q1=quantile(valor,0.25), Q3=quantile(valor,0.75),
+    minimo=min(valor), maximo=max(valor), asimetria=skewness(valor),
+    curtosis=kurtosis(valor)
+  )
+```
+
+### EDA de `rooms_per_household`
+
+```{r hist_rooms_per_household}
+df %>%
+  ggplot(aes(x=rooms_per_household))+
+  geom_histogram(aes(y=after_stat(density)), binwidth=1, fill="#797bb0", color="white", alpha=0.6)+
+  geom_density(color="darkblue", linewidth=1.1)+
+  labs(title="Distribución de habitaciones por hogar", x="Habitaciones por hogar", y="Densidad")+
+  theme_bw()
+```
+
+**Interpretación del histograma:** El número de habitaciones por hogar concentra la mayoría de las observaciones en un intervalo estrecho, pero presenta una cola derecha muy extensa producida por unos pocos distritos con razones excepcionalmente altas. El boxplot confirma valores extremos superiores y la asimetría calculada es fuerte, por lo que se justifica aplicar una transformación logarítmica.
+
+```{r box_rooms_per_household}
+df %>%
+  ggplot(aes(y=rooms_per_household, x=""))+
+  geom_boxplot(fill="#797bb0", color="black", outlier.color="red")+
+  stat_summary(fun=mean, geom="point", shape=20, size=3, color="darkblue")+
+  labs(x="", y="Habitaciones por hogar", title="Boxplot de habitaciones por hogar")+
+  theme_bw()
+```
+
+**Interpretación del boxplot:** El boxplot de `rooms_per_household` confirma que los valores extremos superiores se encuentran muy separados del rango central. La diferencia entre el cuerpo principal y esos casos explica la fuerte asimetría positiva observada en el resumen estadístico y respalda el uso posterior de una transformación logarítmica.
+
+```{r scatter_rooms_per_household_target}
+df %>%
+  ggplot(aes(x=rooms_per_household, y=median_house_value))+
+  geom_point(alpha=0.4, color="darkblue")+
+  labs(x="Habitaciones por hogar", y="Valor medio de la vivienda",
+       title="Habitaciones por hogar vs. valor medio de vivienda")+
+  theme_bw()
+```
+
+**Interpretación del gráfico bivariado:** La relación entre habitaciones por hogar y valor de la vivienda se concentra principalmente en los valores habituales del ratio. Los casos extremos comprimen visualmente la nube principal, por lo que la versión logarítmica permite evaluar con mayor claridad el patrón del grueso de las observaciones.
+
+```{r box_ocean_rooms_per_household}
+df %>%
+  ggplot(aes(x=ocean_proximity, y=rooms_per_household))+
+  geom_boxplot(fill="#797bb0", outlier.color="red")+
+  labs(x="Proximidad al océano", y="Habitaciones por hogar",
+       title="Habitaciones por hogar según proximidad al océano")+
+  theme_bw()
+```
+
+**Interpretación numérica vs. categórica:** Las habitaciones por hogar muestran diferencias de nivel y dispersión entre categorías de proximidad al océano, aunque existe solapamiento. Los valores extremos afectan varias categorías, por lo que la transformación logarítmica facilita comparar sus distribuciones centrales.
+
+### EDA de `bedrooms_per_room`
+
+```{r hist_bedrooms_per_room}
+df %>%
+  ggplot(aes(x=bedrooms_per_room))+
+  geom_histogram(aes(y=after_stat(density)), binwidth=0.02, fill="#797bb0", color="white", alpha=0.6)+
+  geom_density(color="darkblue", linewidth=1.1)+
+  labs(title="Distribución de dormitorios por habitación", x="Dormitorios por habitación", y="Densidad")+
+  theme_bw()
+```
+
+**Interpretación del histograma:** La proporción de dormitorios sobre habitaciones se concentra alrededor de valores relativamente bajos, pero contiene observaciones extremas que alargan la distribución hacia la derecha. Aunque es una proporción, la presencia de esos casos produce una asimetría fuerte; por ello también se aplica log1p para reducir la influencia visual de la cola.
+
+```{r box_bedrooms_per_room}
+df %>%
+  ggplot(aes(y=bedrooms_per_room, x=""))+
+  geom_boxplot(fill="#797bb0", color="black", outlier.color="red")+
+  stat_summary(fun=mean, geom="point", shape=20, size=3, color="darkblue")+
+  labs(x="", y="Dormitorios por habitación", title="Boxplot de dormitorios por habitación")+
+  theme_bw()
+```
+
+**Interpretación del boxplot:** El boxplot de `bedrooms_per_room` confirma que los valores extremos superiores se encuentran muy separados del rango central. La diferencia entre el cuerpo principal y esos casos explica la fuerte asimetría positiva observada en el resumen estadístico y respalda el uso posterior de una transformación logarítmica.
+
+```{r scatter_bedrooms_per_room_target}
+df %>%
+  ggplot(aes(x=bedrooms_per_room, y=median_house_value))+
+  geom_point(alpha=0.4, color="darkblue")+
+  labs(x="Dormitorios por habitación", y="Valor medio de la vivienda",
+       title="Dormitorios por habitación vs. valor medio de vivienda")+
+  theme_bw()
+```
+
+**Interpretación del gráfico bivariado:** Se aprecia que los valores más altos de la proporción de dormitorios no se asocian visualmente con los precios más altos; la nube principal muestra una tendencia general distinta a la observada con cantidades absolutas. La transformación logarítmica ayuda a reducir el efecto de los valores extremos de la proporción.
+
+```{r box_ocean_bedrooms_per_room}
+df %>%
+  ggplot(aes(x=ocean_proximity, y=bedrooms_per_room))+
+  geom_boxplot(fill="#797bb0", outlier.color="red")+
+  labs(x="Proximidad al océano", y="Dormitorios por habitación",
+       title="Dormitorios por habitación según proximidad al océano")+
+  theme_bw()
+```
+
+**Interpretación numérica vs. categórica:** La proporción de dormitorios presenta diferencias entre las categorías y un solapamiento considerable. Al tratarse de una medida relativa, la comparación es menos dependiente del tamaño absoluto del distrito que total_bedrooms y total_rooms por separado.
+
+### EDA de `population_per_household`
+
+```{r hist_population_per_household}
+df %>%
+  ggplot(aes(x=population_per_household))+
+  geom_histogram(aes(y=after_stat(density)), binwidth=1, fill="#797bb0", color="white", alpha=0.6)+
+  geom_density(color="darkblue", linewidth=1.1)+
+  labs(title="Distribución de población por hogar", x="Población por hogar", y="Densidad")+
+  theme_bw()
+```
+
+**Interpretación del histograma:** La población por hogar es la razón con la cola derecha más extrema. La gran mayoría de los distritos se agrupa cerca de valores pequeños y unos pocos presentan razones excepcionalmente altas. Esta asimetría muy fuerte hace necesaria una transformación logarítmica antes de repetir su análisis.
+
+```{r box_population_per_household}
+df %>%
+  ggplot(aes(y=population_per_household, x=""))+
+  geom_boxplot(fill="#797bb0", color="black", outlier.color="red")+
+  stat_summary(fun=mean, geom="point", shape=20, size=3, color="darkblue")+
+  labs(x="", y="Población por hogar", title="Boxplot de población por hogar")+
+  theme_bw()
+```
+
+**Interpretación del boxplot:** El boxplot de `population_per_household` confirma que los valores extremos superiores se encuentran muy separados del rango central. La diferencia entre el cuerpo principal y esos casos explica la fuerte asimetría positiva observada en el resumen estadístico y respalda el uso posterior de una transformación logarítmica.
+
+```{r scatter_population_per_household_target}
+df %>%
+  ggplot(aes(x=population_per_household, y=median_house_value))+
+  geom_point(alpha=0.4, color="darkblue")+
+  labs(x="Población por hogar", y="Valor medio de la vivienda",
+       title="Población por hogar vs. valor medio de vivienda")+
+  theme_bw()
+```
+
+**Interpretación del gráfico bivariado:** La mayor parte de las observaciones de población por hogar se encuentra muy concentrada, mientras unos pocos valores extremos expanden fuertemente el eje horizontal. Esto dificulta interpretar el patrón original y justifica revisar la relación después de transformar la variable.
+
+```{r box_ocean_population_per_household}
+df %>%
+  ggplot(aes(x=ocean_proximity, y=population_per_household))+
+  geom_boxplot(fill="#797bb0", outlier.color="red")+
+  labs(x="Proximidad al océano", y="Población por hogar",
+       title="Población por hogar según proximidad al océano")+
+  theme_bw()
+```
+
+**Interpretación numérica vs. categórica:** La población por hogar presenta valores centrales relativamente próximos entre varias categorías, pero algunos casos extremos amplían mucho la escala. La versión logarítmica permite observar mejor las diferencias habituales entre los grupos.
+
+## Tratamiento de la asimetría de las variables creadas
+
+El resumen anterior muestra que las tres variables creadas mediante ratios presentan asimetría positiva fuerte. Para reducir el efecto de las colas derechas se aplica `log1p()`, que equivale a `log(1 + x)` y conserva definidos los valores iguales a cero.
+
+```{r log_ratios}
+df <- df %>%
+  mutate(
+    log_rooms_per_household = log1p(rooms_per_household),
+    log_bedrooms_per_room = log1p(bedrooms_per_room),
+    log_population_per_household = log1p(population_per_household)
+  )
+```
+
+### Resumen estadístico después de la transformación logarítmica
+
+```{r resumen_log}
+df %>%
+  select(log_rooms_per_household, log_bedrooms_per_room, log_population_per_household) %>%
+  pivot_longer(cols=everything(), names_to="variable", values_to="valor") %>%
+  group_by(variable) %>%
+  summarise(
+    n=length(valor), media=mean(valor), sd=sd(valor), mediana=median(valor),
+    RIC=IQR(valor), Q1=quantile(valor,0.25), Q3=quantile(valor,0.75),
+    minimo=min(valor), maximo=max(valor), asimetria=skewness(valor),
+    curtosis=kurtosis(valor)
+  )
+```
+
+### EDA de `log_rooms_per_household`
+
+```{r hist_log_rooms_per_household}
+df %>%
+  ggplot(aes(x=log_rooms_per_household))+
+  geom_histogram(aes(y=after_stat(density)), bins=35, fill="#797bb0", color="white", alpha=0.6)+
+  geom_density(color="darkblue", linewidth=1.1)+
+  labs(title="Distribución de log de habitaciones por hogar", x="Log de habitaciones por hogar", y="Densidad")+
+  theme_bw()
+```
+
+**Interpretación del histograma:** Después de aplicar log1p, la cola derecha de habitaciones por hogar se comprime notablemente y la mayor parte de los datos ocupa una escala más equilibrada. Los valores extremos siguen existiendo, pero tienen menor influencia visual, lo que facilita estudiar la distribución y las relaciones posteriores.
+
+```{r box_log_rooms_per_household}
+df %>%
+  ggplot(aes(y=log_rooms_per_household, x=""))+
+  geom_boxplot(fill="#797bb0", color="black", outlier.color="red")+
+  stat_summary(fun=mean, geom="point", shape=20, size=3, color="darkblue")+
+  labs(x="", y="Log de habitaciones por hogar", title="Boxplot de log de habitaciones por hogar")+
+  theme_bw()
+```
+
+**Interpretación del boxplot:** En la escala logarítmica los valores altos quedan comprimidos y el rango central puede observarse con mayor detalle. Aunque todavía pueden aparecer puntos señalados como atípicos, su separación respecto a la caja es menor que en la escala original y la distribución resulta más manejable para el análisis exploratorio.
+
+```{r scatter_log_rooms_per_household_target}
+df %>%
+  ggplot(aes(x=log_rooms_per_household, y=median_house_value))+
+  geom_point(alpha=0.4, color="darkblue")+
+  labs(x="Log de habitaciones por hogar", y="Valor medio de la vivienda",
+       title="Log de habitaciones por hogar vs. valor medio de vivienda")+
+  theme_bw()
+```
+
+**Interpretación del gráfico bivariado:** Al reducirse la influencia de los valores extremos, la nube principal se distingue con mayor claridad que con `rooms_per_household` en su escala original. La transformación no crea una relación nueva con el precio, su función es permitir observar mejor el patrón existente entre la mayoría de las observaciones.
+
+```{r box_ocean_log_rooms_per_household}
+df %>%
+  ggplot(aes(x=ocean_proximity, y=log_rooms_per_household))+
+  geom_boxplot(fill="#797bb0", outlier.color="red")+
+  labs(x="Proximidad al océano", y="Log de habitaciones por hogar",
+       title="Log de habitaciones por hogar según proximidad al océano")+
+  theme_bw()
+```
+
+**Interpretación numérica vs. categórica:** La escala logarítmica permite comparar las categorías de `ocean_proximity` sin que unos pocos valores extremos dominen el eje vertical. Se conserva el orden relativo de las observaciones, pero las diferencias dentro del rango habitual de `rooms_per_household` se vuelven más visibles.
+
+### EDA de `log_bedrooms_per_room`
+
+```{r hist_log_bedrooms_per_room}
+df %>%
+  ggplot(aes(x=log_bedrooms_per_room))+
+  geom_histogram(aes(y=after_stat(density)), bins=35, fill="#797bb0", color="white", alpha=0.6)+
+  geom_density(color="darkblue", linewidth=1.1)+
+  labs(title="Distribución de log de dormitorios por habitación", x="Log de dormitorios por habitación", y="Densidad")+
+  theme_bw()
+```
+
+**Interpretación del histograma:** La transformación logarítmica reduce el peso de los valores altos de la proporción de dormitorios y hace más visible la concentración principal. La distribución continúa conservando la información ordinal de la variable original, pero en una escala menos dominada por los extremos.
+
+```{r box_log_bedrooms_per_room}
+df %>%
+  ggplot(aes(y=log_bedrooms_per_room, x=""))+
+  geom_boxplot(fill="#797bb0", color="black", outlier.color="red")+
+  stat_summary(fun=mean, geom="point", shape=20, size=3, color="darkblue")+
+  labs(x="", y="Log de dormitorios por habitación", title="Boxplot de log de dormitorios por habitación")+
+  theme_bw()
+```
+
+**Interpretación del boxplot:** En la escala logarítmica los valores altos quedan comprimidos y el rango central puede observarse con mayor detalle. Aunque todavía pueden aparecer puntos señalados como atípicos, su separación respecto a la caja es menor que en la escala original y la distribución resulta más manejable para el análisis exploratorio.
+
+```{r scatter_log_bedrooms_per_room_target}
+df %>%
+  ggplot(aes(x=log_bedrooms_per_room, y=median_house_value))+
+  geom_point(alpha=0.4, color="darkblue")+
+  labs(x="Log de dormitorios por habitación", y="Valor medio de la vivienda",
+       title="Log de dormitorios por habitación vs. valor medio de vivienda")+
+  theme_bw()
+```
+
+**Interpretación del gráfico bivariado:** Al reducirse la influencia de los valores extremos, la nube principal se distingue con mayor claridad que con `bedrooms_per_room` en su escala original. La transformación no crea una relación nueva con el precio; su función es permitir observar mejor el patrón existente entre la mayoría de las observaciones.
+
+```{r box_ocean_log_bedrooms_per_room}
+df %>%
+  ggplot(aes(x=ocean_proximity, y=log_bedrooms_per_room))+
+  geom_boxplot(fill="#797bb0", outlier.color="red")+
+  labs(x="Proximidad al océano", y="Log de dormitorios por habitación",
+       title="Log de dormitorios por habitación según proximidad al océano")+
+  theme_bw()
+```
+
+**Interpretación numérica vs. categórica:** La escala logarítmica permite comparar las categorías de `ocean_proximity` sin que unos pocos valores extremos dominen el eje vertical. Se conserva el orden relativo de las observaciones, pero las diferencias dentro del rango habitual de `bedrooms_per_room` se vuelven más visibles.
+
+### EDA de `log_population_per_household`
+
+```{r hist_log_population_per_household}
+df %>%
+  ggplot(aes(x=log_population_per_household))+
+  geom_histogram(aes(y=after_stat(density)), bins=35, fill="#797bb0", color="white", alpha=0.6)+
+  geom_density(color="darkblue", linewidth=1.1)+
+  labs(title="Distribución de log de población por hogar", x="Log de población por hogar", y="Densidad")+
+  theme_bw()
+```
+
+**Interpretación del histograma:** La transformación logarítmica reduce de forma importante la enorme separación producida por los valores extremos de población por hogar. La nube principal queda mucho más extendida en la escala gráfica, permitiendo analizar mejor el comportamiento de la mayoría de los distritos.
+
+```{r box_log_population_per_household}
+df %>%
+  ggplot(aes(y=log_population_per_household, x=""))+
+  geom_boxplot(fill="#797bb0", color="black", outlier.color="red")+
+  stat_summary(fun=mean, geom="point", shape=20, size=3, color="darkblue")+
+  labs(x="", y="Log de población por hogar", title="Boxplot de log de población por hogar")+
+  theme_bw()
+```
+
+**Interpretación del boxplot:** En la escala logarítmica los valores altos quedan comprimidos y el rango central puede observarse con mayor detalle. Aunque todavía pueden aparecer puntos señalados como atípicos, su separación respecto a la caja es menor que en la escala original y la distribución resulta más manejable para el análisis exploratorio.
+
+```{r scatter_log_population_per_household_target}
+df %>%
+  ggplot(aes(x=log_population_per_household, y=median_house_value))+
+  geom_point(alpha=0.4, color="darkblue")+
+  labs(x="Log de población por hogar", y="Valor medio de la vivienda",
+       title="Log de población por hogar vs. valor medio de vivienda")+
+  theme_bw()
+```
+
+**Interpretación del gráfico bivariado:** Al reducirse la influencia de los valores extremos, la nube principal se distingue con mayor claridad que con `population_per_household` en su escala original. La transformación no crea una relación nueva con el precio; su función es permitir observar mejor el patrón existente entre la mayoría de las observaciones.
+
+```{r box_ocean_log_population_per_household}
+df %>%
+  ggplot(aes(x=ocean_proximity, y=log_population_per_household))+
+  geom_boxplot(fill="#797bb0", outlier.color="red")+
+  labs(x="Proximidad al océano", y="Log de población por hogar",
+       title="Log de población por hogar según proximidad al océano")+
+  theme_bw()
+```
+
+**Interpretación numérica vs. categórica:** La escala logarítmica permite comparar las categorías de `ocean_proximity` sin que unos pocos valores extremos dominen el eje vertical. Se conserva el orden relativo de las observaciones, pero las diferencias dentro del rango habitual de `population_per_household` se vuelven más visibles.
+
+## `ggpairs()` después de la ingeniería de características
+
+Finalmente se repite la exploración conjunta incluyendo las variables transformadas que representan los ratios, con el fin de observar los patrones después de la ingeniería de características.
+
+```{r ggally_final, fig.width=14, fig.height=14}
+df %>%
+  select(
+    longitude, latitude, housing_median_age, median_income,
+    median_house_value,
+    log_rooms_per_household,
+    log_bedrooms_per_room,
+    log_population_per_household
+  ) %>%
+  ggpairs(
+    upper=list(continuous=wrap("points", alpha=0.15, size=0.3)),
+    lower=list(continuous=wrap("points", alpha=0.15, size=0.3)),
+    diag=list(continuous="densityDiag")
+  )
+```
+
+**Interpretación:** El nuevo `ggpairs()` permite observar conjuntamente las características originales que describen ubicación, antigüedad e ingreso con las nuevas variables relativas transformadas. A diferencia de las cantidades absolutas de habitaciones, dormitorios, población y hogares, los ratios describen características internas del distrito y reducen la dependencia directa del tamaño total. La transformación logarítmica, además, evita que unos pocos valores extremos compriman excesivamente los gráficos de dispersión.
