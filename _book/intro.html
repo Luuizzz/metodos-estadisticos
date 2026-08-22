@@ -23,7 +23,7 @@
 <meta name="author" content="Alejandro Cotes Fornaris,Juan Castillo Giovannetty" />
 
 
-<meta name="date" content="2026-08-11" />
+<meta name="date" content="2026-08-21" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -186,6 +186,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <li class="chapter" data-level="1.8.4" data-path="intro.html"><a href="intro.html#eda-de-log_population_per_household"><i class="fa fa-check"></i><b>1.8.4</b> EDA de <code>log_population_per_household</code></a></li>
 </ul></li>
 <li class="chapter" data-level="1.9" data-path="intro.html"><a href="intro.html#ggpairs-despu%C3%A9s-de-la-ingenier%C3%ADa-de-caracter%C3%ADsticas"><i class="fa fa-check"></i><b>1.9</b> <code>ggpairs()</code> después de la ingeniería de características</a></li>
+<li class="chapter" data-level="1.10" data-path="intro.html"><a href="intro.html#verificacion-de-medias."><i class="fa fa-check"></i><b>1.10</b> Verificacion de medias.</a></li>
 </ul></li>
 </ul>
 
@@ -963,6 +964,776 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <span id="cb82-13"><a href="intro.html#cb82-13" tabindex="-1"></a>  )</span></code></pre></div>
 <p><img src="metodos-estadisticos_files/figure-html/ggally_final-1.png" alt="" width="1344" /></p>
 <p><strong>Interpretación:</strong> El nuevo <code>ggpairs()</code> permite observar conjuntamente las características originales que describen ubicación, antigüedad e ingreso con las nuevas variables relativas transformadas. A diferencia de las cantidades absolutas de habitaciones, dormitorios, población y hogares, los ratios describen características internas del distrito y reducen la dependencia directa del tamaño total. La transformación logarítmica, además, evita que unos pocos valores extremos compriman excesivamente los gráficos de dispersión.</p>
+</div>
+<div id="verificacion-de-medias." class="section level2 hasAnchor" number="1.10">
+<h2><span class="header-section-number">1.10</span> Verificacion de medias.<a href="intro.html#verificacion-de-medias." class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<div class="sourceCode" id="cb83"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb83-1"><a href="intro.html#cb83-1" tabindex="-1"></a><span class="co">#librerias</span></span>
+<span id="cb83-2"><a href="intro.html#cb83-2" tabindex="-1"></a></span>
+<span id="cb83-3"><a href="intro.html#cb83-3" tabindex="-1"></a></span>
+<span id="cb83-4"><a href="intro.html#cb83-4" tabindex="-1"></a><span class="fu">library</span>(readxl)</span>
+<span id="cb83-5"><a href="intro.html#cb83-5" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span>
+<span id="cb83-6"><a href="intro.html#cb83-6" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
+<span id="cb83-7"><a href="intro.html#cb83-7" tabindex="-1"></a><span class="fu">library</span>(effsize)</span>
+<span id="cb83-8"><a href="intro.html#cb83-8" tabindex="-1"></a><span class="fu">library</span>(openintro)</span></code></pre></div>
+<pre><code>## Loading required package: airports</code></pre>
+<pre><code>## Loading required package: cherryblossom</code></pre>
+<pre><code>## Loading required package: usdata</code></pre>
+<pre><code>## 
+## Attaching package: &#39;openintro&#39;</code></pre>
+<pre><code>## The following object is masked from &#39;package:GGally&#39;:
+## 
+##     tips</code></pre>
+<div class="sourceCode" id="cb89"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb89-1"><a href="intro.html#cb89-1" tabindex="-1"></a><span class="fu">library</span>(nortest)</span>
+<span id="cb89-2"><a href="intro.html#cb89-2" tabindex="-1"></a><span class="fu">library</span>(car)</span></code></pre></div>
+<pre><code>## Loading required package: carData</code></pre>
+<pre><code>## 
+## Attaching package: &#39;car&#39;</code></pre>
+<pre><code>## The following object is masked from &#39;package:openintro&#39;:
+## 
+##     densityPlot</code></pre>
+<pre><code>## The following object is masked from &#39;package:dplyr&#39;:
+## 
+##     recode</code></pre>
+<pre><code>## The following object is masked from &#39;package:purrr&#39;:
+## 
+##     some</code></pre>
+<div class="sourceCode" id="cb95"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb95-1"><a href="intro.html#cb95-1" tabindex="-1"></a><span class="fu">library</span>(rstatix)</span></code></pre></div>
+<pre><code>## 
+## Attaching package: &#39;rstatix&#39;</code></pre>
+<pre><code>## The following object is masked from &#39;package:stats&#39;:
+## 
+##     filter</code></pre>
+<div class="sourceCode" id="cb98"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb98-1"><a href="intro.html#cb98-1" tabindex="-1"></a><span class="co">#data</span></span>
+<span id="cb98-2"><a href="intro.html#cb98-2" tabindex="-1"></a>df <span class="ot">&lt;-</span> <span class="fu">read_excel</span>(<span class="st">&quot;verificacion_medias/verificacion_medias/datos/datos_medicos.xlsx&quot;</span>)</span>
+<span id="cb98-3"><a href="intro.html#cb98-3" tabindex="-1"></a></span>
+<span id="cb98-4"><a href="intro.html#cb98-4" tabindex="-1"></a></span>
+<span id="cb98-5"><a href="intro.html#cb98-5" tabindex="-1"></a><span class="co">#transformacion</span></span>
+<span id="cb98-6"><a href="intro.html#cb98-6" tabindex="-1"></a>dfps <span class="ot">&lt;-</span> df <span class="sc">%&gt;%</span></span>
+<span id="cb98-7"><a href="intro.html#cb98-7" tabindex="-1"></a>  <span class="fu">filter</span>(Presion <span class="sc">==</span> <span class="st">&quot;PresionSistolica&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb98-8"><a href="intro.html#cb98-8" tabindex="-1"></a>  <span class="fu">pull</span>(Valores)</span>
+<span id="cb98-9"><a href="intro.html#cb98-9" tabindex="-1"></a></span>
+<span id="cb98-10"><a href="intro.html#cb98-10" tabindex="-1"></a>dfpd <span class="ot">&lt;-</span> df <span class="sc">%&gt;%</span></span>
+<span id="cb98-11"><a href="intro.html#cb98-11" tabindex="-1"></a>  <span class="fu">filter</span>(Presion <span class="sc">==</span> <span class="st">&quot;PresionDiastolica&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb98-12"><a href="intro.html#cb98-12" tabindex="-1"></a>  <span class="fu">pull</span>(Valores)</span>
+<span id="cb98-13"><a href="intro.html#cb98-13" tabindex="-1"></a></span>
+<span id="cb98-14"><a href="intro.html#cb98-14" tabindex="-1"></a>df<span class="sc">$</span>Presion <span class="ot">&lt;-</span> <span class="fu">factor</span>(df<span class="sc">$</span>Presion)</span>
+<span id="cb98-15"><a href="intro.html#cb98-15" tabindex="-1"></a></span>
+<span id="cb98-16"><a href="intro.html#cb98-16" tabindex="-1"></a></span>
+<span id="cb98-17"><a href="intro.html#cb98-17" tabindex="-1"></a>df <span class="sc">%&gt;%</span></span>
+<span id="cb98-18"><a href="intro.html#cb98-18" tabindex="-1"></a>  <span class="fu">group_by</span>(Presion) <span class="sc">%&gt;%</span></span>
+<span id="cb98-19"><a href="intro.html#cb98-19" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb98-20"><a href="intro.html#cb98-20" tabindex="-1"></a>    <span class="at">n =</span> <span class="fu">length</span>(Valores),</span>
+<span id="cb98-21"><a href="intro.html#cb98-21" tabindex="-1"></a>    <span class="at">promedio =</span> <span class="fu">mean</span>(Valores),</span>
+<span id="cb98-22"><a href="intro.html#cb98-22" tabindex="-1"></a>    <span class="at">desviacion_estandar =</span> <span class="fu">sd</span>(Valores),</span>
+<span id="cb98-23"><a href="intro.html#cb98-23" tabindex="-1"></a>    <span class="at">mediana =</span> <span class="fu">median</span>(Valores),</span>
+<span id="cb98-24"><a href="intro.html#cb98-24" tabindex="-1"></a>    <span class="at">ric =</span> <span class="fu">IQR</span>(Valores),</span>
+<span id="cb98-25"><a href="intro.html#cb98-25" tabindex="-1"></a>    <span class="at">minimo =</span> <span class="fu">min</span>(Valores),</span>
+<span id="cb98-26"><a href="intro.html#cb98-26" tabindex="-1"></a>    <span class="at">maximo =</span> <span class="fu">max</span>(Valores)</span>
+<span id="cb98-27"><a href="intro.html#cb98-27" tabindex="-1"></a>  )</span></code></pre></div>
+<pre><code>## # A tibble: 2 × 8
+##   Presion             n promedio desviacion_estandar mediana   ric minimo maximo
+##   &lt;fct&gt;           &lt;int&gt;    &lt;dbl&gt;               &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;
+## 1 PresionDiastol…   100     78.9                9.48    77.8  12.4   59.9   112.
+## 2 PresionSistoli…   100    121.                 9.13   121.   11.9   96.9   142.</code></pre>
+<div class="sourceCode" id="cb100"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb100-1"><a href="intro.html#cb100-1" tabindex="-1"></a><span class="co">#verificacion de normalidad en la presion sistolica</span></span>
+<span id="cb100-2"><a href="intro.html#cb100-2" tabindex="-1"></a><span class="fu">ks.test</span>(<span class="fu">scale</span>(dfps), <span class="st">&quot;pnorm&quot;</span>)</span></code></pre></div>
+<pre><code>## 
+##  Asymptotic one-sample Kolmogorov-Smirnov test
+## 
+## data:  scale(dfps)
+## D = 0.058097, p-value = 0.8884
+## alternative hypothesis: two-sided</code></pre>
+<div class="sourceCode" id="cb102"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb102-1"><a href="intro.html#cb102-1" tabindex="-1"></a><span class="fu">ks.test</span>(</span>
+<span id="cb102-2"><a href="intro.html#cb102-2" tabindex="-1"></a>  dfps,</span>
+<span id="cb102-3"><a href="intro.html#cb102-3" tabindex="-1"></a>  <span class="st">&quot;pnorm&quot;</span>,</span>
+<span id="cb102-4"><a href="intro.html#cb102-4" tabindex="-1"></a>  <span class="at">mean =</span> <span class="fu">mean</span>(dfps),</span>
+<span id="cb102-5"><a href="intro.html#cb102-5" tabindex="-1"></a>  <span class="at">sd =</span> <span class="fu">sd</span>(dfps)</span>
+<span id="cb102-6"><a href="intro.html#cb102-6" tabindex="-1"></a>)</span></code></pre></div>
+<pre><code>## 
+##  Asymptotic one-sample Kolmogorov-Smirnov test
+## 
+## data:  dfps
+## D = 0.058097, p-value = 0.8884
+## alternative hypothesis: two-sided</code></pre>
+<div class="sourceCode" id="cb104"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb104-1"><a href="intro.html#cb104-1" tabindex="-1"></a><span class="co">#verificacion de normalidad en la presion diastolica</span></span>
+<span id="cb104-2"><a href="intro.html#cb104-2" tabindex="-1"></a><span class="fu">ks.test</span>(<span class="fu">scale</span>(dfpd), <span class="st">&quot;pnorm&quot;</span>)</span></code></pre></div>
+<pre><code>## 
+##  Asymptotic one-sample Kolmogorov-Smirnov test
+## 
+## data:  scale(dfpd)
+## D = 0.057927, p-value = 0.8905
+## alternative hypothesis: two-sided</code></pre>
+<div class="sourceCode" id="cb106"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb106-1"><a href="intro.html#cb106-1" tabindex="-1"></a><span class="fu">ks.test</span>(</span>
+<span id="cb106-2"><a href="intro.html#cb106-2" tabindex="-1"></a>  dfpd,</span>
+<span id="cb106-3"><a href="intro.html#cb106-3" tabindex="-1"></a>  <span class="st">&quot;pnorm&quot;</span>,</span>
+<span id="cb106-4"><a href="intro.html#cb106-4" tabindex="-1"></a>  <span class="at">mean =</span> <span class="fu">mean</span>(dfpd),</span>
+<span id="cb106-5"><a href="intro.html#cb106-5" tabindex="-1"></a>  <span class="at">sd =</span> <span class="fu">sd</span>(dfpd)</span>
+<span id="cb106-6"><a href="intro.html#cb106-6" tabindex="-1"></a>)</span></code></pre></div>
+<pre><code>## 
+##  Asymptotic one-sample Kolmogorov-Smirnov test
+## 
+## data:  dfpd
+## D = 0.057927, p-value = 0.8905
+## alternative hypothesis: two-sided</code></pre>
+<div class="sourceCode" id="cb108"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb108-1"><a href="intro.html#cb108-1" tabindex="-1"></a><span class="co">#Verificacion de igualdad de varianzas</span></span>
+<span id="cb108-2"><a href="intro.html#cb108-2" tabindex="-1"></a><span class="fu">var.test</span>(dfpd, dfps)</span></code></pre></div>
+<pre><code>## 
+##  F test to compare two variances
+## 
+## data:  dfpd and dfps
+## F = 1.0778, num df = 99, denom df = 99, p-value = 0.7102
+## alternative hypothesis: true ratio of variances is not equal to 1
+## 95 percent confidence interval:
+##  0.7251696 1.6018204
+## sample estimates:
+## ratio of variances 
+##           1.077772</code></pre>
+<div class="sourceCode" id="cb110"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb110-1"><a href="intro.html#cb110-1" tabindex="-1"></a><span class="co">#Comprobacion manual de la diferencia de varianzas</span></span>
+<span id="cb110-2"><a href="intro.html#cb110-2" tabindex="-1"></a><span class="co">#Formula: F = s1^2 / s2^2</span></span>
+<span id="cb110-3"><a href="intro.html#cb110-3" tabindex="-1"></a></span>
+<span id="cb110-4"><a href="intro.html#cb110-4" tabindex="-1"></a>n1 <span class="ot">&lt;-</span> <span class="fu">length</span>(dfpd)</span>
+<span id="cb110-5"><a href="intro.html#cb110-5" tabindex="-1"></a>n2 <span class="ot">&lt;-</span> <span class="fu">length</span>(dfps)</span>
+<span id="cb110-6"><a href="intro.html#cb110-6" tabindex="-1"></a></span>
+<span id="cb110-7"><a href="intro.html#cb110-7" tabindex="-1"></a>s1_2 <span class="ot">&lt;-</span> <span class="fu">var</span>(dfpd)</span>
+<span id="cb110-8"><a href="intro.html#cb110-8" tabindex="-1"></a>s2_2 <span class="ot">&lt;-</span> <span class="fu">var</span>(dfps)</span>
+<span id="cb110-9"><a href="intro.html#cb110-9" tabindex="-1"></a></span>
+<span id="cb110-10"><a href="intro.html#cb110-10" tabindex="-1"></a>F_manual <span class="ot">&lt;-</span> s1_2 <span class="sc">/</span> s2_2</span>
+<span id="cb110-11"><a href="intro.html#cb110-11" tabindex="-1"></a></span>
+<span id="cb110-12"><a href="intro.html#cb110-12" tabindex="-1"></a>gl1 <span class="ot">&lt;-</span> n1 <span class="sc">-</span> <span class="dv">1</span></span>
+<span id="cb110-13"><a href="intro.html#cb110-13" tabindex="-1"></a>gl2 <span class="ot">&lt;-</span> n2 <span class="sc">-</span> <span class="dv">1</span></span>
+<span id="cb110-14"><a href="intro.html#cb110-14" tabindex="-1"></a></span>
+<span id="cb110-15"><a href="intro.html#cb110-15" tabindex="-1"></a>alpha <span class="ot">&lt;-</span> <span class="fl">0.05</span></span>
+<span id="cb110-16"><a href="intro.html#cb110-16" tabindex="-1"></a></span>
+<span id="cb110-17"><a href="intro.html#cb110-17" tabindex="-1"></a>IC_varianzas <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
+<span id="cb110-18"><a href="intro.html#cb110-18" tabindex="-1"></a>  <span class="at">inferior =</span> F_manual <span class="sc">/</span> <span class="fu">qf</span>(<span class="dv">1</span> <span class="sc">-</span> alpha <span class="sc">/</span> <span class="dv">2</span>, gl1, gl2),</span>
+<span id="cb110-19"><a href="intro.html#cb110-19" tabindex="-1"></a>  <span class="at">superior =</span> F_manual <span class="sc">/</span> <span class="fu">qf</span>(alpha <span class="sc">/</span> <span class="dv">2</span>, gl1, gl2)</span>
+<span id="cb110-20"><a href="intro.html#cb110-20" tabindex="-1"></a>)</span>
+<span id="cb110-21"><a href="intro.html#cb110-21" tabindex="-1"></a></span>
+<span id="cb110-22"><a href="intro.html#cb110-22" tabindex="-1"></a>F_manual</span></code></pre></div>
+<pre><code>## [1] 1.077772</code></pre>
+<div class="sourceCode" id="cb112"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb112-1"><a href="intro.html#cb112-1" tabindex="-1"></a>gl1</span></code></pre></div>
+<pre><code>## [1] 99</code></pre>
+<div class="sourceCode" id="cb114"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb114-1"><a href="intro.html#cb114-1" tabindex="-1"></a>gl2</span></code></pre></div>
+<pre><code>## [1] 99</code></pre>
+<div class="sourceCode" id="cb116"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb116-1"><a href="intro.html#cb116-1" tabindex="-1"></a>IC_varianzas</span></code></pre></div>
+<pre><code>##  inferior  superior 
+## 0.7251696 1.6018204</code></pre>
+<div class="sourceCode" id="cb118"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb118-1"><a href="intro.html#cb118-1" tabindex="-1"></a><span class="co">#Prueba ttest</span></span>
+<span id="cb118-2"><a href="intro.html#cb118-2" tabindex="-1"></a><span class="fu">t.test</span>(</span>
+<span id="cb118-3"><a href="intro.html#cb118-3" tabindex="-1"></a>  <span class="at">x =</span> dfps,</span>
+<span id="cb118-4"><a href="intro.html#cb118-4" tabindex="-1"></a>  <span class="at">y =</span> dfpd,</span>
+<span id="cb118-5"><a href="intro.html#cb118-5" tabindex="-1"></a>  <span class="at">var.equal =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb118-6"><a href="intro.html#cb118-6" tabindex="-1"></a>  <span class="at">paired =</span> <span class="cn">FALSE</span></span>
+<span id="cb118-7"><a href="intro.html#cb118-7" tabindex="-1"></a>)</span></code></pre></div>
+<pre><code>## 
+##  Two Sample t-test
+## 
+## data:  dfps and dfpd
+## t = 31.888, df = 198, p-value &lt; 2.2e-16
+## alternative hypothesis: true difference in means is not equal to 0
+## 95 percent confidence interval:
+##  39.36328 44.55275
+## sample estimates:
+## mean of x mean of y 
+## 120.90406  78.94604</code></pre>
+<div class="sourceCode" id="cb120"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb120-1"><a href="intro.html#cb120-1" tabindex="-1"></a><span class="co">#Comprobacion manual de la diferencia de medias</span></span>
+<span id="cb120-2"><a href="intro.html#cb120-2" tabindex="-1"></a><span class="co">#Formula para muestras independientes con varianzas iguales</span></span>
+<span id="cb120-3"><a href="intro.html#cb120-3" tabindex="-1"></a></span>
+<span id="cb120-4"><a href="intro.html#cb120-4" tabindex="-1"></a>n1 <span class="ot">&lt;-</span> <span class="fu">length</span>(dfps)</span>
+<span id="cb120-5"><a href="intro.html#cb120-5" tabindex="-1"></a>n2 <span class="ot">&lt;-</span> <span class="fu">length</span>(dfpd)</span>
+<span id="cb120-6"><a href="intro.html#cb120-6" tabindex="-1"></a></span>
+<span id="cb120-7"><a href="intro.html#cb120-7" tabindex="-1"></a>x1 <span class="ot">&lt;-</span> <span class="fu">mean</span>(dfps)</span>
+<span id="cb120-8"><a href="intro.html#cb120-8" tabindex="-1"></a>x2 <span class="ot">&lt;-</span> <span class="fu">mean</span>(dfpd)</span>
+<span id="cb120-9"><a href="intro.html#cb120-9" tabindex="-1"></a></span>
+<span id="cb120-10"><a href="intro.html#cb120-10" tabindex="-1"></a>s1_2 <span class="ot">&lt;-</span> <span class="fu">var</span>(dfps)</span>
+<span id="cb120-11"><a href="intro.html#cb120-11" tabindex="-1"></a>s2_2 <span class="ot">&lt;-</span> <span class="fu">var</span>(dfpd)</span>
+<span id="cb120-12"><a href="intro.html#cb120-12" tabindex="-1"></a></span>
+<span id="cb120-13"><a href="intro.html#cb120-13" tabindex="-1"></a>sp2 <span class="ot">&lt;-</span> (</span>
+<span id="cb120-14"><a href="intro.html#cb120-14" tabindex="-1"></a>  (n1 <span class="sc">-</span> <span class="dv">1</span>) <span class="sc">*</span> s1_2 <span class="sc">+</span></span>
+<span id="cb120-15"><a href="intro.html#cb120-15" tabindex="-1"></a>    (n2 <span class="sc">-</span> <span class="dv">1</span>) <span class="sc">*</span> s2_2</span>
+<span id="cb120-16"><a href="intro.html#cb120-16" tabindex="-1"></a>) <span class="sc">/</span> (n1 <span class="sc">+</span> n2 <span class="sc">-</span> <span class="dv">2</span>)</span>
+<span id="cb120-17"><a href="intro.html#cb120-17" tabindex="-1"></a></span>
+<span id="cb120-18"><a href="intro.html#cb120-18" tabindex="-1"></a>t_manual <span class="ot">&lt;-</span> (x1 <span class="sc">-</span> x2) <span class="sc">/</span></span>
+<span id="cb120-19"><a href="intro.html#cb120-19" tabindex="-1"></a>  <span class="fu">sqrt</span>(sp2 <span class="sc">*</span> (<span class="dv">1</span> <span class="sc">/</span> n1 <span class="sc">+</span> <span class="dv">1</span> <span class="sc">/</span> n2))</span>
+<span id="cb120-20"><a href="intro.html#cb120-20" tabindex="-1"></a></span>
+<span id="cb120-21"><a href="intro.html#cb120-21" tabindex="-1"></a>gl <span class="ot">&lt;-</span> n1 <span class="sc">+</span> n2 <span class="sc">-</span> <span class="dv">2</span></span>
+<span id="cb120-22"><a href="intro.html#cb120-22" tabindex="-1"></a></span>
+<span id="cb120-23"><a href="intro.html#cb120-23" tabindex="-1"></a>IC_medias <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
+<span id="cb120-24"><a href="intro.html#cb120-24" tabindex="-1"></a>  <span class="at">inferior =</span> (x1 <span class="sc">-</span> x2) <span class="sc">-</span></span>
+<span id="cb120-25"><a href="intro.html#cb120-25" tabindex="-1"></a>    <span class="fu">qt</span>(<span class="dv">1</span> <span class="sc">-</span> alpha <span class="sc">/</span> <span class="dv">2</span>, gl) <span class="sc">*</span></span>
+<span id="cb120-26"><a href="intro.html#cb120-26" tabindex="-1"></a>    <span class="fu">sqrt</span>(sp2 <span class="sc">*</span> (<span class="dv">1</span> <span class="sc">/</span> n1 <span class="sc">+</span> <span class="dv">1</span> <span class="sc">/</span> n2)),</span>
+<span id="cb120-27"><a href="intro.html#cb120-27" tabindex="-1"></a>  </span>
+<span id="cb120-28"><a href="intro.html#cb120-28" tabindex="-1"></a>  <span class="at">superior =</span> (x1 <span class="sc">-</span> x2) <span class="sc">+</span></span>
+<span id="cb120-29"><a href="intro.html#cb120-29" tabindex="-1"></a>    <span class="fu">qt</span>(<span class="dv">1</span> <span class="sc">-</span> alpha <span class="sc">/</span> <span class="dv">2</span>, gl) <span class="sc">*</span></span>
+<span id="cb120-30"><a href="intro.html#cb120-30" tabindex="-1"></a>    <span class="fu">sqrt</span>(sp2 <span class="sc">*</span> (<span class="dv">1</span> <span class="sc">/</span> n1 <span class="sc">+</span> <span class="dv">1</span> <span class="sc">/</span> n2))</span>
+<span id="cb120-31"><a href="intro.html#cb120-31" tabindex="-1"></a>)</span>
+<span id="cb120-32"><a href="intro.html#cb120-32" tabindex="-1"></a></span>
+<span id="cb120-33"><a href="intro.html#cb120-33" tabindex="-1"></a>x1</span></code></pre></div>
+<pre><code>## [1] 120.9041</code></pre>
+<div class="sourceCode" id="cb122"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb122-1"><a href="intro.html#cb122-1" tabindex="-1"></a>x2</span></code></pre></div>
+<pre><code>## [1] 78.94604</code></pre>
+<div class="sourceCode" id="cb124"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb124-1"><a href="intro.html#cb124-1" tabindex="-1"></a>x1 <span class="sc">-</span> x2</span></code></pre></div>
+<pre><code>## [1] 41.95802</code></pre>
+<div class="sourceCode" id="cb126"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb126-1"><a href="intro.html#cb126-1" tabindex="-1"></a>sp2</span></code></pre></div>
+<pre><code>## [1] 86.56337</code></pre>
+<div class="sourceCode" id="cb128"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb128-1"><a href="intro.html#cb128-1" tabindex="-1"></a>t_manual</span></code></pre></div>
+<pre><code>## [1] 31.88841</code></pre>
+<div class="sourceCode" id="cb130"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb130-1"><a href="intro.html#cb130-1" tabindex="-1"></a>gl</span></code></pre></div>
+<pre><code>## [1] 198</code></pre>
+<div class="sourceCode" id="cb132"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb132-1"><a href="intro.html#cb132-1" tabindex="-1"></a>IC_medias</span></code></pre></div>
+<pre><code>## inferior superior 
+## 39.36328 44.55275</code></pre>
+<div class="sourceCode" id="cb134"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb134-1"><a href="intro.html#cb134-1" tabindex="-1"></a><span class="co">#tamaño del efecto</span></span>
+<span id="cb134-2"><a href="intro.html#cb134-2" tabindex="-1"></a><span class="fu">cohen.d</span>(</span>
+<span id="cb134-3"><a href="intro.html#cb134-3" tabindex="-1"></a>  dfps,</span>
+<span id="cb134-4"><a href="intro.html#cb134-4" tabindex="-1"></a>  dfpd,</span>
+<span id="cb134-5"><a href="intro.html#cb134-5" tabindex="-1"></a>  <span class="at">paired =</span> <span class="cn">FALSE</span></span>
+<span id="cb134-6"><a href="intro.html#cb134-6" tabindex="-1"></a>)</span></code></pre></div>
+<pre><code>## 
+## Cohen&#39;s d
+## 
+## d estimate: 4.509702 (large)
+## 95 percent confidence interval:
+##    lower    upper 
+## 3.984821 5.034583</code></pre>
+<div class="sourceCode" id="cb136"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb136-1"><a href="intro.html#cb136-1" tabindex="-1"></a><span class="co">#Comprobacion manual del tamaño del efecto</span></span>
+<span id="cb136-2"><a href="intro.html#cb136-2" tabindex="-1"></a><span class="co">#Desviacion estandar combinada ponderada</span></span>
+<span id="cb136-3"><a href="intro.html#cb136-3" tabindex="-1"></a></span>
+<span id="cb136-4"><a href="intro.html#cb136-4" tabindex="-1"></a>sp <span class="ot">&lt;-</span> <span class="fu">sqrt</span>(</span>
+<span id="cb136-5"><a href="intro.html#cb136-5" tabindex="-1"></a>  (</span>
+<span id="cb136-6"><a href="intro.html#cb136-6" tabindex="-1"></a>    (n1 <span class="sc">-</span> <span class="dv">1</span>) <span class="sc">*</span> s1_2 <span class="sc">+</span></span>
+<span id="cb136-7"><a href="intro.html#cb136-7" tabindex="-1"></a>      (n2 <span class="sc">-</span> <span class="dv">1</span>) <span class="sc">*</span> s2_2</span>
+<span id="cb136-8"><a href="intro.html#cb136-8" tabindex="-1"></a>  ) <span class="sc">/</span> (n1 <span class="sc">+</span> n2 <span class="sc">-</span> <span class="dv">2</span>)</span>
+<span id="cb136-9"><a href="intro.html#cb136-9" tabindex="-1"></a>)</span>
+<span id="cb136-10"><a href="intro.html#cb136-10" tabindex="-1"></a></span>
+<span id="cb136-11"><a href="intro.html#cb136-11" tabindex="-1"></a>d_cohen_manual <span class="ot">&lt;-</span> <span class="fu">abs</span>(x1 <span class="sc">-</span> x2) <span class="sc">/</span> sp</span>
+<span id="cb136-12"><a href="intro.html#cb136-12" tabindex="-1"></a></span>
+<span id="cb136-13"><a href="intro.html#cb136-13" tabindex="-1"></a>sp</span></code></pre></div>
+<pre><code>## [1] 9.303944</code></pre>
+<div class="sourceCode" id="cb138"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb138-1"><a href="intro.html#cb138-1" tabindex="-1"></a>d_cohen_manual</span></code></pre></div>
+<pre><code>## [1] 4.509702</code></pre>
+<div class="sourceCode" id="cb140"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb140-1"><a href="intro.html#cb140-1" tabindex="-1"></a><span class="co">#Comprobacion con el promedio cuadratico simple</span></span>
+<span id="cb140-2"><a href="intro.html#cb140-2" tabindex="-1"></a></span>
+<span id="cb140-3"><a href="intro.html#cb140-3" tabindex="-1"></a>sp_simple <span class="ot">&lt;-</span> <span class="fu">sqrt</span>(</span>
+<span id="cb140-4"><a href="intro.html#cb140-4" tabindex="-1"></a>  (s1_2 <span class="sc">+</span> s2_2) <span class="sc">/</span> <span class="dv">2</span></span>
+<span id="cb140-5"><a href="intro.html#cb140-5" tabindex="-1"></a>)</span>
+<span id="cb140-6"><a href="intro.html#cb140-6" tabindex="-1"></a></span>
+<span id="cb140-7"><a href="intro.html#cb140-7" tabindex="-1"></a>d_cohen_simple <span class="ot">&lt;-</span> <span class="fu">abs</span>(x1 <span class="sc">-</span> x2) <span class="sc">/</span> sp_simple</span>
+<span id="cb140-8"><a href="intro.html#cb140-8" tabindex="-1"></a></span>
+<span id="cb140-9"><a href="intro.html#cb140-9" tabindex="-1"></a>sp_simple</span></code></pre></div>
+<pre><code>## [1] 9.303944</code></pre>
+<div class="sourceCode" id="cb142"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb142-1"><a href="intro.html#cb142-1" tabindex="-1"></a>d_cohen_simple</span></code></pre></div>
+<pre><code>## [1] 4.509702</code></pre>
+<div class="sourceCode" id="cb144"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb144-1"><a href="intro.html#cb144-1" tabindex="-1"></a><span class="co">#Diferencia de medias con varianzas distintas</span></span>
+<span id="cb144-2"><a href="intro.html#cb144-2" tabindex="-1"></a></span>
+<span id="cb144-3"><a href="intro.html#cb144-3" tabindex="-1"></a></span>
+<span id="cb144-4"><a href="intro.html#cb144-4" tabindex="-1"></a><span class="co">#data 2---</span></span>
+<span id="cb144-5"><a href="intro.html#cb144-5" tabindex="-1"></a>dfe <span class="ot">&lt;-</span> <span class="fu">read_excel</span>(<span class="st">&quot;verificacion_medias/verificacion_medias/datos/datos_economia.xlsx&quot;</span>)</span>
+<span id="cb144-6"><a href="intro.html#cb144-6" tabindex="-1"></a></span>
+<span id="cb144-7"><a href="intro.html#cb144-7" tabindex="-1"></a></span>
+<span id="cb144-8"><a href="intro.html#cb144-8" tabindex="-1"></a><span class="co">#transformacion 2--</span></span>
+<span id="cb144-9"><a href="intro.html#cb144-9" tabindex="-1"></a>dfg <span class="ot">&lt;-</span> dfe <span class="sc">|&gt;</span></span>
+<span id="cb144-10"><a href="intro.html#cb144-10" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="st">`</span><span class="at">Tipo de cuenta</span><span class="st">`</span> <span class="sc">==</span> <span class="st">&quot;Ganancia&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb144-11"><a href="intro.html#cb144-11" tabindex="-1"></a>  <span class="fu">pull</span>(Precio)</span>
+<span id="cb144-12"><a href="intro.html#cb144-12" tabindex="-1"></a></span>
+<span id="cb144-13"><a href="intro.html#cb144-13" tabindex="-1"></a>dfi <span class="ot">&lt;-</span> dfe <span class="sc">|&gt;</span></span>
+<span id="cb144-14"><a href="intro.html#cb144-14" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="st">`</span><span class="at">Tipo de cuenta</span><span class="st">`</span> <span class="sc">==</span> <span class="st">&quot;Inversion&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb144-15"><a href="intro.html#cb144-15" tabindex="-1"></a>  <span class="fu">pull</span>(Precio)</span>
+<span id="cb144-16"><a href="intro.html#cb144-16" tabindex="-1"></a></span>
+<span id="cb144-17"><a href="intro.html#cb144-17" tabindex="-1"></a></span>
+<span id="cb144-18"><a href="intro.html#cb144-18" tabindex="-1"></a>dfe <span class="sc">%&gt;%</span></span>
+<span id="cb144-19"><a href="intro.html#cb144-19" tabindex="-1"></a>  <span class="fu">group_by</span>(<span class="st">`</span><span class="at">Tipo de cuenta</span><span class="st">`</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb144-20"><a href="intro.html#cb144-20" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb144-21"><a href="intro.html#cb144-21" tabindex="-1"></a>    <span class="at">n =</span> <span class="fu">length</span>(Precio),</span>
+<span id="cb144-22"><a href="intro.html#cb144-22" tabindex="-1"></a>    <span class="at">promedio =</span> <span class="fu">mean</span>(Precio),</span>
+<span id="cb144-23"><a href="intro.html#cb144-23" tabindex="-1"></a>    <span class="at">desviacion_estandar =</span> <span class="fu">sd</span>(Precio),</span>
+<span id="cb144-24"><a href="intro.html#cb144-24" tabindex="-1"></a>    <span class="at">mediana =</span> <span class="fu">median</span>(Precio),</span>
+<span id="cb144-25"><a href="intro.html#cb144-25" tabindex="-1"></a>    <span class="at">ric =</span> <span class="fu">IQR</span>(Precio),</span>
+<span id="cb144-26"><a href="intro.html#cb144-26" tabindex="-1"></a>    <span class="at">minimo =</span> <span class="fu">min</span>(Precio),</span>
+<span id="cb144-27"><a href="intro.html#cb144-27" tabindex="-1"></a>    <span class="at">maximo =</span> <span class="fu">max</span>(Precio)</span>
+<span id="cb144-28"><a href="intro.html#cb144-28" tabindex="-1"></a>  )</span></code></pre></div>
+<pre><code>## # A tibble: 2 × 8
+##   `Tipo de cuenta`     n promedio desviacion_estandar  mediana      ric   minimo
+##   &lt;chr&gt;            &lt;int&gt;    &lt;dbl&gt;               &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;
+## 1 Ganancia           100  778491.             193397.  754834.  253790.  389351.
+## 2 Inversion          100 5090406.             912816. 5061756. 1185673. 2690831.
+## # ℹ 1 more variable: maximo &lt;dbl&gt;</code></pre>
+<div class="sourceCode" id="cb146"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb146-1"><a href="intro.html#cb146-1" tabindex="-1"></a><span class="co">#comprobar normalidad</span></span>
+<span id="cb146-2"><a href="intro.html#cb146-2" tabindex="-1"></a><span class="fu">ks.test</span>(<span class="fu">scale</span>(dfg), <span class="st">&quot;pnorm&quot;</span>)</span></code></pre></div>
+<pre><code>## 
+##  Asymptotic one-sample Kolmogorov-Smirnov test
+## 
+## data:  scale(dfg)
+## D = 0.057927, p-value = 0.8905
+## alternative hypothesis: two-sided</code></pre>
+<div class="sourceCode" id="cb148"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb148-1"><a href="intro.html#cb148-1" tabindex="-1"></a><span class="fu">ks.test</span>(<span class="fu">scale</span>(dfi), <span class="st">&quot;pnorm&quot;</span>)</span></code></pre></div>
+<pre><code>## 
+##  Asymptotic one-sample Kolmogorov-Smirnov test
+## 
+## data:  scale(dfi)
+## D = 0.058097, p-value = 0.8884
+## alternative hypothesis: two-sided</code></pre>
+<div class="sourceCode" id="cb150"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb150-1"><a href="intro.html#cb150-1" tabindex="-1"></a><span class="co">#Pruebas de diferencias de varianzas</span></span>
+<span id="cb150-2"><a href="intro.html#cb150-2" tabindex="-1"></a><span class="fu">var.test</span>(dfi, dfg)</span></code></pre></div>
+<pre><code>## 
+##  F test to compare two variances
+## 
+## data:  dfi and dfg
+## F = 22.277, num df = 99, denom df = 99, p-value &lt; 2.2e-16
+## alternative hypothesis: true ratio of variances is not equal to 1
+## 95 percent confidence interval:
+##  14.9892 33.1095
+## sample estimates:
+## ratio of variances 
+##           22.27745</code></pre>
+<div class="sourceCode" id="cb152"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb152-1"><a href="intro.html#cb152-1" tabindex="-1"></a><span class="co">#Comprobacion manual de la diferencia de varianzas</span></span>
+<span id="cb152-2"><a href="intro.html#cb152-2" tabindex="-1"></a><span class="co">#Formula: F = s1^2 / s2^2</span></span>
+<span id="cb152-3"><a href="intro.html#cb152-3" tabindex="-1"></a></span>
+<span id="cb152-4"><a href="intro.html#cb152-4" tabindex="-1"></a>n1 <span class="ot">&lt;-</span> <span class="fu">length</span>(dfi)</span>
+<span id="cb152-5"><a href="intro.html#cb152-5" tabindex="-1"></a>n2 <span class="ot">&lt;-</span> <span class="fu">length</span>(dfg)</span>
+<span id="cb152-6"><a href="intro.html#cb152-6" tabindex="-1"></a></span>
+<span id="cb152-7"><a href="intro.html#cb152-7" tabindex="-1"></a>s1_2 <span class="ot">&lt;-</span> <span class="fu">var</span>(dfi)</span>
+<span id="cb152-8"><a href="intro.html#cb152-8" tabindex="-1"></a>s2_2 <span class="ot">&lt;-</span> <span class="fu">var</span>(dfg)</span>
+<span id="cb152-9"><a href="intro.html#cb152-9" tabindex="-1"></a></span>
+<span id="cb152-10"><a href="intro.html#cb152-10" tabindex="-1"></a>F_manual <span class="ot">&lt;-</span> s1_2 <span class="sc">/</span> s2_2</span>
+<span id="cb152-11"><a href="intro.html#cb152-11" tabindex="-1"></a></span>
+<span id="cb152-12"><a href="intro.html#cb152-12" tabindex="-1"></a>gl1 <span class="ot">&lt;-</span> n1 <span class="sc">-</span> <span class="dv">1</span></span>
+<span id="cb152-13"><a href="intro.html#cb152-13" tabindex="-1"></a>gl2 <span class="ot">&lt;-</span> n2 <span class="sc">-</span> <span class="dv">1</span></span>
+<span id="cb152-14"><a href="intro.html#cb152-14" tabindex="-1"></a></span>
+<span id="cb152-15"><a href="intro.html#cb152-15" tabindex="-1"></a>IC_varianzas <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
+<span id="cb152-16"><a href="intro.html#cb152-16" tabindex="-1"></a>  <span class="at">inferior =</span> F_manual <span class="sc">/</span> <span class="fu">qf</span>(<span class="dv">1</span> <span class="sc">-</span> alpha <span class="sc">/</span> <span class="dv">2</span>, gl1, gl2),</span>
+<span id="cb152-17"><a href="intro.html#cb152-17" tabindex="-1"></a>  <span class="at">superior =</span> F_manual <span class="sc">/</span> <span class="fu">qf</span>(alpha <span class="sc">/</span> <span class="dv">2</span>, gl1, gl2)</span>
+<span id="cb152-18"><a href="intro.html#cb152-18" tabindex="-1"></a>)</span>
+<span id="cb152-19"><a href="intro.html#cb152-19" tabindex="-1"></a></span>
+<span id="cb152-20"><a href="intro.html#cb152-20" tabindex="-1"></a>F_manual</span></code></pre></div>
+<pre><code>## [1] 22.27745</code></pre>
+<div class="sourceCode" id="cb154"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb154-1"><a href="intro.html#cb154-1" tabindex="-1"></a>gl1</span></code></pre></div>
+<pre><code>## [1] 99</code></pre>
+<div class="sourceCode" id="cb156"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb156-1"><a href="intro.html#cb156-1" tabindex="-1"></a>gl2</span></code></pre></div>
+<pre><code>## [1] 99</code></pre>
+<div class="sourceCode" id="cb158"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb158-1"><a href="intro.html#cb158-1" tabindex="-1"></a>IC_varianzas</span></code></pre></div>
+<pre><code>## inferior superior 
+##  14.9892  33.1095</code></pre>
+<div class="sourceCode" id="cb160"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb160-1"><a href="intro.html#cb160-1" tabindex="-1"></a><span class="co"># Bartlett</span></span>
+<span id="cb160-2"><a href="intro.html#cb160-2" tabindex="-1"></a><span class="fu">bartlett.test</span>(</span>
+<span id="cb160-3"><a href="intro.html#cb160-3" tabindex="-1"></a>  Precio <span class="sc">~</span> <span class="st">`</span><span class="at">Tipo de cuenta</span><span class="st">`</span>,</span>
+<span id="cb160-4"><a href="intro.html#cb160-4" tabindex="-1"></a>  <span class="at">data =</span> dfe</span>
+<span id="cb160-5"><a href="intro.html#cb160-5" tabindex="-1"></a>)</span></code></pre></div>
+<pre><code>## 
+##  Bartlett test of homogeneity of variances
+## 
+## data:  Precio by Tipo de cuenta
+## Bartlett&#39;s K-squared = 177.81, df = 1, p-value &lt; 2.2e-16</code></pre>
+<div class="sourceCode" id="cb162"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb162-1"><a href="intro.html#cb162-1" tabindex="-1"></a><span class="co"># Fligner-Killeen</span></span>
+<span id="cb162-2"><a href="intro.html#cb162-2" tabindex="-1"></a><span class="fu">fligner.test</span>(</span>
+<span id="cb162-3"><a href="intro.html#cb162-3" tabindex="-1"></a>  Precio <span class="sc">~</span> <span class="st">`</span><span class="at">Tipo de cuenta</span><span class="st">`</span>,</span>
+<span id="cb162-4"><a href="intro.html#cb162-4" tabindex="-1"></a>  <span class="at">data =</span> dfe</span>
+<span id="cb162-5"><a href="intro.html#cb162-5" tabindex="-1"></a>)</span></code></pre></div>
+<pre><code>## 
+##  Fligner-Killeen test of homogeneity of variances
+## 
+## data:  Precio by Tipo de cuenta
+## Fligner-Killeen:med chi-squared = 82.798, df = 1, p-value &lt; 2.2e-16</code></pre>
+<div class="sourceCode" id="cb164"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb164-1"><a href="intro.html#cb164-1" tabindex="-1"></a><span class="co"># Levene</span></span>
+<span id="cb164-2"><a href="intro.html#cb164-2" tabindex="-1"></a><span class="fu">leveneTest</span>(</span>
+<span id="cb164-3"><a href="intro.html#cb164-3" tabindex="-1"></a>  Precio <span class="sc">~</span> <span class="st">`</span><span class="at">Tipo de cuenta</span><span class="st">`</span>,</span>
+<span id="cb164-4"><a href="intro.html#cb164-4" tabindex="-1"></a>  <span class="at">data =</span> dfe</span>
+<span id="cb164-5"><a href="intro.html#cb164-5" tabindex="-1"></a>)</span></code></pre></div>
+<pre><code>## Warning in leveneTest.default(y = y, group = group, ...): group coerced to
+## factor.</code></pre>
+<pre><code>## Levene&#39;s Test for Homogeneity of Variance (center = median)
+##        Df F value    Pr(&gt;F)    
+## group   1   107.2 &lt; 2.2e-16 ***
+##       198                      
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1</code></pre>
+<div class="sourceCode" id="cb167"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb167-1"><a href="intro.html#cb167-1" tabindex="-1"></a><span class="co">#ttest con Welch</span></span>
+<span id="cb167-2"><a href="intro.html#cb167-2" tabindex="-1"></a><span class="fu">t.test</span>(</span>
+<span id="cb167-3"><a href="intro.html#cb167-3" tabindex="-1"></a>  <span class="at">x =</span> dfg,</span>
+<span id="cb167-4"><a href="intro.html#cb167-4" tabindex="-1"></a>  <span class="at">y =</span> dfi,</span>
+<span id="cb167-5"><a href="intro.html#cb167-5" tabindex="-1"></a>  <span class="at">var.equal =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb167-6"><a href="intro.html#cb167-6" tabindex="-1"></a>  <span class="at">paired =</span> <span class="cn">FALSE</span></span>
+<span id="cb167-7"><a href="intro.html#cb167-7" tabindex="-1"></a>)</span></code></pre></div>
+<pre><code>## 
+##  Welch Two Sample t-test
+## 
+## data:  dfg and dfi
+## t = -46.212, df = 107.87, p-value &lt; 2.2e-16
+## alternative hypothesis: true difference in means is not equal to 0
+## 95 percent confidence interval:
+##  -4496870 -4126960
+## sample estimates:
+## mean of x mean of y 
+##  778490.6 5090405.9</code></pre>
+<div class="sourceCode" id="cb169"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb169-1"><a href="intro.html#cb169-1" tabindex="-1"></a><span class="co">#La formula t de la imagen no se aplica en esta parte</span></span>
+<span id="cb169-2"><a href="intro.html#cb169-2" tabindex="-1"></a><span class="co">#porque esa formula supone varianzas iguales</span></span>
+<span id="cb169-3"><a href="intro.html#cb169-3" tabindex="-1"></a><span class="co">#y esta prueba utiliza el procedimiento de Welch</span></span>
+<span id="cb169-4"><a href="intro.html#cb169-4" tabindex="-1"></a></span>
+<span id="cb169-5"><a href="intro.html#cb169-5" tabindex="-1"></a></span>
+<span id="cb169-6"><a href="intro.html#cb169-6" tabindex="-1"></a><span class="co">#tamaño del efecto</span></span>
+<span id="cb169-7"><a href="intro.html#cb169-7" tabindex="-1"></a><span class="fu">cohen.d</span>(</span>
+<span id="cb169-8"><a href="intro.html#cb169-8" tabindex="-1"></a>  dfi,</span>
+<span id="cb169-9"><a href="intro.html#cb169-9" tabindex="-1"></a>  dfg,</span>
+<span id="cb169-10"><a href="intro.html#cb169-10" tabindex="-1"></a>  <span class="at">paired =</span> <span class="cn">FALSE</span></span>
+<span id="cb169-11"><a href="intro.html#cb169-11" tabindex="-1"></a>)</span></code></pre></div>
+<pre><code>## 
+## Cohen&#39;s d
+## 
+## d estimate: 6.535323 (large)
+## 95 percent confidence interval:
+##    lower    upper 
+## 5.833174 7.237472</code></pre>
+<div class="sourceCode" id="cb171"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb171-1"><a href="intro.html#cb171-1" tabindex="-1"></a><span class="co">#Comprobacion manual del tamaño del efecto</span></span>
+<span id="cb171-2"><a href="intro.html#cb171-2" tabindex="-1"></a></span>
+<span id="cb171-3"><a href="intro.html#cb171-3" tabindex="-1"></a>n1 <span class="ot">&lt;-</span> <span class="fu">length</span>(dfi)</span>
+<span id="cb171-4"><a href="intro.html#cb171-4" tabindex="-1"></a>n2 <span class="ot">&lt;-</span> <span class="fu">length</span>(dfg)</span>
+<span id="cb171-5"><a href="intro.html#cb171-5" tabindex="-1"></a></span>
+<span id="cb171-6"><a href="intro.html#cb171-6" tabindex="-1"></a>x1 <span class="ot">&lt;-</span> <span class="fu">mean</span>(dfi)</span>
+<span id="cb171-7"><a href="intro.html#cb171-7" tabindex="-1"></a>x2 <span class="ot">&lt;-</span> <span class="fu">mean</span>(dfg)</span>
+<span id="cb171-8"><a href="intro.html#cb171-8" tabindex="-1"></a></span>
+<span id="cb171-9"><a href="intro.html#cb171-9" tabindex="-1"></a>s1_2 <span class="ot">&lt;-</span> <span class="fu">var</span>(dfi)</span>
+<span id="cb171-10"><a href="intro.html#cb171-10" tabindex="-1"></a>s2_2 <span class="ot">&lt;-</span> <span class="fu">var</span>(dfg)</span>
+<span id="cb171-11"><a href="intro.html#cb171-11" tabindex="-1"></a></span>
+<span id="cb171-12"><a href="intro.html#cb171-12" tabindex="-1"></a>sp <span class="ot">&lt;-</span> <span class="fu">sqrt</span>(</span>
+<span id="cb171-13"><a href="intro.html#cb171-13" tabindex="-1"></a>  (</span>
+<span id="cb171-14"><a href="intro.html#cb171-14" tabindex="-1"></a>    (n1 <span class="sc">-</span> <span class="dv">1</span>) <span class="sc">*</span> s1_2 <span class="sc">+</span></span>
+<span id="cb171-15"><a href="intro.html#cb171-15" tabindex="-1"></a>      (n2 <span class="sc">-</span> <span class="dv">1</span>) <span class="sc">*</span> s2_2</span>
+<span id="cb171-16"><a href="intro.html#cb171-16" tabindex="-1"></a>  ) <span class="sc">/</span> (n1 <span class="sc">+</span> n2 <span class="sc">-</span> <span class="dv">2</span>)</span>
+<span id="cb171-17"><a href="intro.html#cb171-17" tabindex="-1"></a>)</span>
+<span id="cb171-18"><a href="intro.html#cb171-18" tabindex="-1"></a></span>
+<span id="cb171-19"><a href="intro.html#cb171-19" tabindex="-1"></a>d_cohen_manual <span class="ot">&lt;-</span> <span class="fu">abs</span>(x1 <span class="sc">-</span> x2) <span class="sc">/</span> sp</span>
+<span id="cb171-20"><a href="intro.html#cb171-20" tabindex="-1"></a></span>
+<span id="cb171-21"><a href="intro.html#cb171-21" tabindex="-1"></a>sp</span></code></pre></div>
+<pre><code>## [1] 659786.1</code></pre>
+<div class="sourceCode" id="cb173"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb173-1"><a href="intro.html#cb173-1" tabindex="-1"></a>d_cohen_manual</span></code></pre></div>
+<pre><code>## [1] 6.535323</code></pre>
+<div class="sourceCode" id="cb175"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb175-1"><a href="intro.html#cb175-1" tabindex="-1"></a><span class="co">#Comprobacion con el promedio cuadratico simple</span></span>
+<span id="cb175-2"><a href="intro.html#cb175-2" tabindex="-1"></a></span>
+<span id="cb175-3"><a href="intro.html#cb175-3" tabindex="-1"></a>sp_simple <span class="ot">&lt;-</span> <span class="fu">sqrt</span>(</span>
+<span id="cb175-4"><a href="intro.html#cb175-4" tabindex="-1"></a>  (s1_2 <span class="sc">+</span> s2_2) <span class="sc">/</span> <span class="dv">2</span></span>
+<span id="cb175-5"><a href="intro.html#cb175-5" tabindex="-1"></a>)</span>
+<span id="cb175-6"><a href="intro.html#cb175-6" tabindex="-1"></a></span>
+<span id="cb175-7"><a href="intro.html#cb175-7" tabindex="-1"></a>d_cohen_simple <span class="ot">&lt;-</span> <span class="fu">abs</span>(x1 <span class="sc">-</span> x2) <span class="sc">/</span> sp_simple</span>
+<span id="cb175-8"><a href="intro.html#cb175-8" tabindex="-1"></a></span>
+<span id="cb175-9"><a href="intro.html#cb175-9" tabindex="-1"></a>sp_simple</span></code></pre></div>
+<pre><code>## [1] 659786.1</code></pre>
+<div class="sourceCode" id="cb177"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb177-1"><a href="intro.html#cb177-1" tabindex="-1"></a>d_cohen_simple</span></code></pre></div>
+<pre><code>## [1] 6.535323</code></pre>
+<div class="sourceCode" id="cb179"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb179-1"><a href="intro.html#cb179-1" tabindex="-1"></a><span class="co"># 4.2 Comparacion de grupos pareados con estadistica parametrica</span></span>
+<span id="cb179-2"><a href="intro.html#cb179-2" tabindex="-1"></a><span class="co">#data 3---</span></span>
+<span id="cb179-3"><a href="intro.html#cb179-3" tabindex="-1"></a></span>
+<span id="cb179-4"><a href="intro.html#cb179-4" tabindex="-1"></a><span class="co"># Datos de tiempos antes y después de la intervención educativa</span></span>
+<span id="cb179-5"><a href="intro.html#cb179-5" tabindex="-1"></a>datos <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb179-6"><a href="intro.html#cb179-6" tabindex="-1"></a>  <span class="at">estudiante =</span> <span class="fu">c</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">10</span>),</span>
+<span id="cb179-7"><a href="intro.html#cb179-7" tabindex="-1"></a>  </span>
+<span id="cb179-8"><a href="intro.html#cb179-8" tabindex="-1"></a>  <span class="at">antes =</span> <span class="fu">c</span>(</span>
+<span id="cb179-9"><a href="intro.html#cb179-9" tabindex="-1"></a>    <span class="fl">12.9</span>, <span class="fl">13.5</span>, <span class="fl">12.8</span>, <span class="fl">15.6</span>, <span class="fl">17.2</span>,</span>
+<span id="cb179-10"><a href="intro.html#cb179-10" tabindex="-1"></a>    <span class="fl">19.2</span>, <span class="fl">12.6</span>, <span class="fl">15.3</span>, <span class="fl">14.4</span>, <span class="fl">11.3</span></span>
+<span id="cb179-11"><a href="intro.html#cb179-11" tabindex="-1"></a>  ),</span>
+<span id="cb179-12"><a href="intro.html#cb179-12" tabindex="-1"></a>  </span>
+<span id="cb179-13"><a href="intro.html#cb179-13" tabindex="-1"></a>  <span class="at">despues =</span> <span class="fu">c</span>(</span>
+<span id="cb179-14"><a href="intro.html#cb179-14" tabindex="-1"></a>    <span class="fl">12.7</span>, <span class="fl">13.6</span>, <span class="fl">12.0</span>, <span class="fl">15.2</span>, <span class="fl">16.8</span>,</span>
+<span id="cb179-15"><a href="intro.html#cb179-15" tabindex="-1"></a>    <span class="fl">20.0</span>, <span class="fl">12.0</span>, <span class="fl">15.9</span>, <span class="fl">16.0</span>, <span class="fl">11.1</span></span>
+<span id="cb179-16"><a href="intro.html#cb179-16" tabindex="-1"></a>  )</span>
+<span id="cb179-17"><a href="intro.html#cb179-17" tabindex="-1"></a>)</span>
+<span id="cb179-18"><a href="intro.html#cb179-18" tabindex="-1"></a></span>
+<span id="cb179-19"><a href="intro.html#cb179-19" tabindex="-1"></a></span>
+<span id="cb179-20"><a href="intro.html#cb179-20" tabindex="-1"></a><span class="co"># Exploratorio de los datos</span></span>
+<span id="cb179-21"><a href="intro.html#cb179-21" tabindex="-1"></a>datos <span class="ot">&lt;-</span> datos <span class="sc">|&gt;</span></span>
+<span id="cb179-22"><a href="intro.html#cb179-22" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb179-23"><a href="intro.html#cb179-23" tabindex="-1"></a>    <span class="at">Diferencia =</span> despues <span class="sc">-</span> antes</span>
+<span id="cb179-24"><a href="intro.html#cb179-24" tabindex="-1"></a>  )</span>
+<span id="cb179-25"><a href="intro.html#cb179-25" tabindex="-1"></a></span>
+<span id="cb179-26"><a href="intro.html#cb179-26" tabindex="-1"></a></span>
+<span id="cb179-27"><a href="intro.html#cb179-27" tabindex="-1"></a>datos <span class="sc">|&gt;</span></span>
+<span id="cb179-28"><a href="intro.html#cb179-28" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb179-29"><a href="intro.html#cb179-29" tabindex="-1"></a>    <span class="at">media_antes =</span> <span class="fu">mean</span>(antes),</span>
+<span id="cb179-30"><a href="intro.html#cb179-30" tabindex="-1"></a>    <span class="at">media_despues =</span> <span class="fu">mean</span>(despues),</span>
+<span id="cb179-31"><a href="intro.html#cb179-31" tabindex="-1"></a>    </span>
+<span id="cb179-32"><a href="intro.html#cb179-32" tabindex="-1"></a>    <span class="at">desviacion_antes =</span> <span class="fu">sd</span>(antes),</span>
+<span id="cb179-33"><a href="intro.html#cb179-33" tabindex="-1"></a>    <span class="at">desviacion_despues =</span> <span class="fu">sd</span>(despues),</span>
+<span id="cb179-34"><a href="intro.html#cb179-34" tabindex="-1"></a>    </span>
+<span id="cb179-35"><a href="intro.html#cb179-35" tabindex="-1"></a>    <span class="at">media_diferencia =</span> <span class="fu">mean</span>(Diferencia),</span>
+<span id="cb179-36"><a href="intro.html#cb179-36" tabindex="-1"></a>    <span class="at">desviacion_diferencia =</span> <span class="fu">sd</span>(Diferencia)</span>
+<span id="cb179-37"><a href="intro.html#cb179-37" tabindex="-1"></a>  )</span></code></pre></div>
+<pre><code>##   media_antes media_despues desviacion_antes desviacion_despues
+## 1       14.48         14.53         2.392953           2.755621
+##   media_diferencia desviacion_diferencia
+## 1             0.05             0.7412452</code></pre>
+<div class="sourceCode" id="cb181"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb181-1"><a href="intro.html#cb181-1" tabindex="-1"></a><span class="co">#supuesto de normalidad</span></span>
+<span id="cb181-2"><a href="intro.html#cb181-2" tabindex="-1"></a><span class="fu">shapiro.test</span>(datos<span class="sc">$</span>Diferencia)</span></code></pre></div>
+<pre><code>## 
+##  Shapiro-Wilk normality test
+## 
+## data:  datos$Diferencia
+## W = 0.90307, p-value = 0.2367</code></pre>
+<div class="sourceCode" id="cb183"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb183-1"><a href="intro.html#cb183-1" tabindex="-1"></a><span class="co">#Diferencia de medias</span></span>
+<span id="cb183-2"><a href="intro.html#cb183-2" tabindex="-1"></a><span class="fu">t.test</span>(</span>
+<span id="cb183-3"><a href="intro.html#cb183-3" tabindex="-1"></a>  datos<span class="sc">$</span>despues,</span>
+<span id="cb183-4"><a href="intro.html#cb183-4" tabindex="-1"></a>  datos<span class="sc">$</span>antes,</span>
+<span id="cb183-5"><a href="intro.html#cb183-5" tabindex="-1"></a>  <span class="at">paired =</span> <span class="cn">TRUE</span></span>
+<span id="cb183-6"><a href="intro.html#cb183-6" tabindex="-1"></a>)</span></code></pre></div>
+<pre><code>## 
+##  Paired t-test
+## 
+## data:  datos$despues and datos$antes
+## t = 0.21331, df = 9, p-value = 0.8358
+## alternative hypothesis: true mean difference is not equal to 0
+## 95 percent confidence interval:
+##  -0.4802549  0.5802549
+## sample estimates:
+## mean difference 
+##            0.05</code></pre>
+<div class="sourceCode" id="cb185"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb185-1"><a href="intro.html#cb185-1" tabindex="-1"></a><span class="co">#La formula t de la imagen no se aplica en esta parte</span></span>
+<span id="cb185-2"><a href="intro.html#cb185-2" tabindex="-1"></a><span class="co">#porque los datos son pareados y no muestras independientes</span></span>
+<span id="cb185-3"><a href="intro.html#cb185-3" tabindex="-1"></a></span>
+<span id="cb185-4"><a href="intro.html#cb185-4" tabindex="-1"></a></span>
+<span id="cb185-5"><a href="intro.html#cb185-5" tabindex="-1"></a><span class="co">#prueba de efecto</span></span>
+<span id="cb185-6"><a href="intro.html#cb185-6" tabindex="-1"></a><span class="fu">cohen.d</span>(</span>
+<span id="cb185-7"><a href="intro.html#cb185-7" tabindex="-1"></a>  datos<span class="sc">$</span>despues,</span>
+<span id="cb185-8"><a href="intro.html#cb185-8" tabindex="-1"></a>  datos<span class="sc">$</span>antes,</span>
+<span id="cb185-9"><a href="intro.html#cb185-9" tabindex="-1"></a>  <span class="at">paired =</span> <span class="cn">TRUE</span></span>
+<span id="cb185-10"><a href="intro.html#cb185-10" tabindex="-1"></a>)</span></code></pre></div>
+<pre><code>## 
+## Cohen&#39;s d
+## 
+## d estimate: 0.0169815 (negligible)
+## 95 percent confidence interval:
+##      lower      upper 
+## -0.1502851  0.1842481</code></pre>
+<div class="sourceCode" id="cb187"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb187-1"><a href="intro.html#cb187-1" tabindex="-1"></a><span class="co">#La formula de Cohen mostrada en la imagen corresponde</span></span>
+<span id="cb187-2"><a href="intro.html#cb187-2" tabindex="-1"></a><span class="co">#a muestras independientes, no a datos pareados</span></span>
+<span id="cb187-3"><a href="intro.html#cb187-3" tabindex="-1"></a></span>
+<span id="cb187-4"><a href="intro.html#cb187-4" tabindex="-1"></a></span>
+<span id="cb187-5"><a href="intro.html#cb187-5" tabindex="-1"></a></span>
+<span id="cb187-6"><a href="intro.html#cb187-6" tabindex="-1"></a></span>
+<span id="cb187-7"><a href="intro.html#cb187-7" tabindex="-1"></a></span>
+<span id="cb187-8"><a href="intro.html#cb187-8" tabindex="-1"></a><span class="co">#Comparacion de grupos independientes</span></span>
+<span id="cb187-9"><a href="intro.html#cb187-9" tabindex="-1"></a><span class="co">#con estadistica no parametrica</span></span>
+<span id="cb187-10"><a href="intro.html#cb187-10" tabindex="-1"></a></span>
+<span id="cb187-11"><a href="intro.html#cb187-11" tabindex="-1"></a><span class="fu">data</span>(<span class="st">&quot;births&quot;</span>)</span>
+<span id="cb187-12"><a href="intro.html#cb187-12" tabindex="-1"></a></span>
+<span id="cb187-13"><a href="intro.html#cb187-13" tabindex="-1"></a>dfb <span class="ot">&lt;-</span> births</span>
+<span id="cb187-14"><a href="intro.html#cb187-14" tabindex="-1"></a></span>
+<span id="cb187-15"><a href="intro.html#cb187-15" tabindex="-1"></a><span class="co">#caracterizar el peso del bebe segun si la madre fuma o no</span></span>
+<span id="cb187-16"><a href="intro.html#cb187-16" tabindex="-1"></a><span class="co">#transformaciones</span></span>
+<span id="cb187-17"><a href="intro.html#cb187-17" tabindex="-1"></a>dfbsum <span class="ot">&lt;-</span> dfb <span class="sc">%&gt;%</span></span>
+<span id="cb187-18"><a href="intro.html#cb187-18" tabindex="-1"></a>  <span class="fu">group_by</span>(smoke) <span class="sc">%&gt;%</span></span>
+<span id="cb187-19"><a href="intro.html#cb187-19" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb187-20"><a href="intro.html#cb187-20" tabindex="-1"></a>    <span class="at">n =</span> <span class="fu">length</span>(weight),</span>
+<span id="cb187-21"><a href="intro.html#cb187-21" tabindex="-1"></a>    <span class="at">promedio =</span> <span class="fu">mean</span>(weight),</span>
+<span id="cb187-22"><a href="intro.html#cb187-22" tabindex="-1"></a>    <span class="at">desviacion_estandar =</span> <span class="fu">sd</span>(weight),</span>
+<span id="cb187-23"><a href="intro.html#cb187-23" tabindex="-1"></a>    <span class="at">mediana =</span> <span class="fu">median</span>(weight),</span>
+<span id="cb187-24"><a href="intro.html#cb187-24" tabindex="-1"></a>    <span class="at">ric =</span> <span class="fu">IQR</span>(weight),</span>
+<span id="cb187-25"><a href="intro.html#cb187-25" tabindex="-1"></a>    <span class="at">minimo =</span> <span class="fu">min</span>(weight),</span>
+<span id="cb187-26"><a href="intro.html#cb187-26" tabindex="-1"></a>    <span class="at">maximo =</span> <span class="fu">max</span>(weight)</span>
+<span id="cb187-27"><a href="intro.html#cb187-27" tabindex="-1"></a>  )</span>
+<span id="cb187-28"><a href="intro.html#cb187-28" tabindex="-1"></a></span>
+<span id="cb187-29"><a href="intro.html#cb187-29" tabindex="-1"></a></span>
+<span id="cb187-30"><a href="intro.html#cb187-30" tabindex="-1"></a><span class="co">#Verificar supuestos de normalidad</span></span>
+<span id="cb187-31"><a href="intro.html#cb187-31" tabindex="-1"></a>df_dist <span class="ot">&lt;-</span> dfb <span class="sc">|&gt;</span></span>
+<span id="cb187-32"><a href="intro.html#cb187-32" tabindex="-1"></a>  <span class="fu">group_by</span>(smoke) <span class="sc">|&gt;</span></span>
+<span id="cb187-33"><a href="intro.html#cb187-33" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb187-34"><a href="intro.html#cb187-34" tabindex="-1"></a>    <span class="at">n =</span> <span class="fu">length</span>(weight),</span>
+<span id="cb187-35"><a href="intro.html#cb187-35" tabindex="-1"></a>    </span>
+<span id="cb187-36"><a href="intro.html#cb187-36" tabindex="-1"></a>    <span class="at">est_ks =</span> <span class="fu">ks.test</span>(</span>
+<span id="cb187-37"><a href="intro.html#cb187-37" tabindex="-1"></a>      <span class="fu">scale</span>(weight),</span>
+<span id="cb187-38"><a href="intro.html#cb187-38" tabindex="-1"></a>      <span class="st">&quot;pnorm&quot;</span></span>
+<span id="cb187-39"><a href="intro.html#cb187-39" tabindex="-1"></a>    )<span class="sc">$</span>statistic,</span>
+<span id="cb187-40"><a href="intro.html#cb187-40" tabindex="-1"></a>    </span>
+<span id="cb187-41"><a href="intro.html#cb187-41" tabindex="-1"></a>    <span class="at">p_ks =</span> <span class="fu">ks.test</span>(</span>
+<span id="cb187-42"><a href="intro.html#cb187-42" tabindex="-1"></a>      <span class="fu">scale</span>(weight),</span>
+<span id="cb187-43"><a href="intro.html#cb187-43" tabindex="-1"></a>      <span class="st">&quot;pnorm&quot;</span></span>
+<span id="cb187-44"><a href="intro.html#cb187-44" tabindex="-1"></a>    )<span class="sc">$</span>p.value,</span>
+<span id="cb187-45"><a href="intro.html#cb187-45" tabindex="-1"></a>    </span>
+<span id="cb187-46"><a href="intro.html#cb187-46" tabindex="-1"></a>    <span class="at">est_sw =</span> <span class="fu">shapiro.test</span>(</span>
+<span id="cb187-47"><a href="intro.html#cb187-47" tabindex="-1"></a>      weight</span>
+<span id="cb187-48"><a href="intro.html#cb187-48" tabindex="-1"></a>    )<span class="sc">$</span>statistic,</span>
+<span id="cb187-49"><a href="intro.html#cb187-49" tabindex="-1"></a>    </span>
+<span id="cb187-50"><a href="intro.html#cb187-50" tabindex="-1"></a>    <span class="at">p_sw =</span> <span class="fu">shapiro.test</span>(</span>
+<span id="cb187-51"><a href="intro.html#cb187-51" tabindex="-1"></a>      weight</span>
+<span id="cb187-52"><a href="intro.html#cb187-52" tabindex="-1"></a>    )<span class="sc">$</span>p.value,</span>
+<span id="cb187-53"><a href="intro.html#cb187-53" tabindex="-1"></a>    </span>
+<span id="cb187-54"><a href="intro.html#cb187-54" tabindex="-1"></a>    <span class="at">est_l =</span> <span class="fu">lillie.test</span>(</span>
+<span id="cb187-55"><a href="intro.html#cb187-55" tabindex="-1"></a>      weight</span>
+<span id="cb187-56"><a href="intro.html#cb187-56" tabindex="-1"></a>    )<span class="sc">$</span>statistic,</span>
+<span id="cb187-57"><a href="intro.html#cb187-57" tabindex="-1"></a>    </span>
+<span id="cb187-58"><a href="intro.html#cb187-58" tabindex="-1"></a>    <span class="at">p_l =</span> <span class="fu">lillie.test</span>(</span>
+<span id="cb187-59"><a href="intro.html#cb187-59" tabindex="-1"></a>      weight</span>
+<span id="cb187-60"><a href="intro.html#cb187-60" tabindex="-1"></a>    )<span class="sc">$</span>p.value</span>
+<span id="cb187-61"><a href="intro.html#cb187-61" tabindex="-1"></a>  )</span></code></pre></div>
+<pre><code>## Warning: There were 4 warnings in `summarise()`.
+## The first warning was:
+## ℹ In argument: `est_ks = ks.test(scale(weight), &quot;pnorm&quot;)$statistic`.
+## ℹ In group 1: `smoke = nonsmoker`.
+## Caused by warning in `ks.test.default()`:
+## ! ties should not be present for the one-sample Kolmogorov-Smirnov test
+## ℹ Run `dplyr::last_dplyr_warnings()` to see the 3 remaining warnings.</code></pre>
+<div class="sourceCode" id="cb189"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb189-1"><a href="intro.html#cb189-1" tabindex="-1"></a><span class="co">#Los datos no cuentan con una distribucion normal</span></span>
+<span id="cb189-2"><a href="intro.html#cb189-2" tabindex="-1"></a></span>
+<span id="cb189-3"><a href="intro.html#cb189-3" tabindex="-1"></a></span>
+<span id="cb189-4"><a href="intro.html#cb189-4" tabindex="-1"></a><span class="co">#levene</span></span>
+<span id="cb189-5"><a href="intro.html#cb189-5" tabindex="-1"></a><span class="fu">leveneTest</span>(</span>
+<span id="cb189-6"><a href="intro.html#cb189-6" tabindex="-1"></a>  weight <span class="sc">~</span> smoke,</span>
+<span id="cb189-7"><a href="intro.html#cb189-7" tabindex="-1"></a>  <span class="at">data =</span> dfb,</span>
+<span id="cb189-8"><a href="intro.html#cb189-8" tabindex="-1"></a>  <span class="at">center =</span> median</span>
+<span id="cb189-9"><a href="intro.html#cb189-9" tabindex="-1"></a>)</span></code></pre></div>
+<pre><code>## Levene&#39;s Test for Homogeneity of Variance (center = median)
+##        Df F value Pr(&gt;F)
+## group   1  0.4442 0.5062
+##       148</code></pre>
+<div class="sourceCode" id="cb191"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb191-1"><a href="intro.html#cb191-1" tabindex="-1"></a><span class="fu">wilcox.test</span>(</span>
+<span id="cb191-2"><a href="intro.html#cb191-2" tabindex="-1"></a>  weight <span class="sc">~</span> smoke,</span>
+<span id="cb191-3"><a href="intro.html#cb191-3" tabindex="-1"></a>  <span class="at">data =</span> dfb,</span>
+<span id="cb191-4"><a href="intro.html#cb191-4" tabindex="-1"></a>)</span></code></pre></div>
+<pre><code>## 
+##  Wilcoxon rank sum test with continuity correction
+## 
+## data:  weight by smoke
+## W = 2879, p-value = 0.1312
+## alternative hypothesis: true location shift is not equal to 0</code></pre>
+<div class="sourceCode" id="cb193"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb193-1"><a href="intro.html#cb193-1" tabindex="-1"></a><span class="co">#No hay diferencias significativas entre el peso del bebe</span></span>
+<span id="cb193-2"><a href="intro.html#cb193-2" tabindex="-1"></a><span class="co">#Respecto a si la madre fuma o no</span></span>
+<span id="cb193-3"><a href="intro.html#cb193-3" tabindex="-1"></a></span>
+<span id="cb193-4"><a href="intro.html#cb193-4" tabindex="-1"></a></span>
+<span id="cb193-5"><a href="intro.html#cb193-5" tabindex="-1"></a>dataQ <span class="ot">&lt;-</span> <span class="fu">read.delim</span>(<span class="st">&quot;verificacion_medias/verificacion_medias/datos/dataQ.tsv&quot;</span>, <span class="at">header=</span><span class="cn">TRUE</span>)</span>
+<span id="cb193-6"><a href="intro.html#cb193-6" tabindex="-1"></a><span class="fu">head</span>(dataQ)</span></code></pre></div>
+<pre><code>##   Participantes Experimento Q1 Q2 Q3 Q4 Edad Genero Nivel.educativo
+## 1             1     Pretest  2  2  2  2   37      F              PR
+## 2             2     Pretest  2  4  3  2   53      F              PO
+## 3             3     Pretest  2  3  1  2   42      F              PO
+## 4             4     Pretest  3  4  2  1   36      F              PO
+## 5             5     Pretest  2  2  2  2   35      M              PO
+## 6             6     Pretest  4  3  1  3   53      M              PO
+##   Tiempo.de.labor
+## 1               3
+## 2               5
+## 3               3
+## 4               6
+## 5               8
+## 6               3</code></pre>
+<div class="sourceCode" id="cb195"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb195-1"><a href="intro.html#cb195-1" tabindex="-1"></a>dfag <span class="ot">&lt;-</span> dataQ <span class="sc">|&gt;</span> <span class="fu">group_by</span>(Experimento) <span class="sc">|&gt;</span> </span>
+<span id="cb195-2"><a href="intro.html#cb195-2" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">n=</span><span class="fu">length</span>(Q1),</span>
+<span id="cb195-3"><a href="intro.html#cb195-3" tabindex="-1"></a>            <span class="at">minimo=</span><span class="fu">min</span>(Q1),</span>
+<span id="cb195-4"><a href="intro.html#cb195-4" tabindex="-1"></a>            <span class="at">maximo=</span><span class="fu">max</span>(Q1),</span>
+<span id="cb195-5"><a href="intro.html#cb195-5" tabindex="-1"></a>            <span class="at">media=</span><span class="fu">mean</span>(Q1),</span>
+<span id="cb195-6"><a href="intro.html#cb195-6" tabindex="-1"></a>            <span class="at">mediana=</span><span class="fu">median</span>(Q1),</span>
+<span id="cb195-7"><a href="intro.html#cb195-7" tabindex="-1"></a>            <span class="at">desviacion_estandar=</span><span class="fu">sd</span>(Q1),</span>
+<span id="cb195-8"><a href="intro.html#cb195-8" tabindex="-1"></a>            <span class="at">RIC=</span><span class="fu">IQR</span>(Q1)</span>
+<span id="cb195-9"><a href="intro.html#cb195-9" tabindex="-1"></a>  )</span>
+<span id="cb195-10"><a href="intro.html#cb195-10" tabindex="-1"></a></span>
+<span id="cb195-11"><a href="intro.html#cb195-11" tabindex="-1"></a>df_d <span class="ot">&lt;-</span> dataQ <span class="sc">|&gt;</span></span>
+<span id="cb195-12"><a href="intro.html#cb195-12" tabindex="-1"></a>  <span class="fu">group_by</span>(Experimento) <span class="sc">|&gt;</span></span>
+<span id="cb195-13"><a href="intro.html#cb195-13" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb195-14"><a href="intro.html#cb195-14" tabindex="-1"></a>    <span class="at">n =</span> <span class="fu">length</span>(Q1),</span>
+<span id="cb195-15"><a href="intro.html#cb195-15" tabindex="-1"></a>    </span>
+<span id="cb195-16"><a href="intro.html#cb195-16" tabindex="-1"></a>    <span class="at">est_ks =</span> <span class="fu">ks.test</span>(<span class="fu">scale</span>(Q1),<span class="st">&quot;pnorm&quot;</span>)<span class="sc">$</span>statistic,</span>
+<span id="cb195-17"><a href="intro.html#cb195-17" tabindex="-1"></a>    </span>
+<span id="cb195-18"><a href="intro.html#cb195-18" tabindex="-1"></a>    <span class="at">p_ks =</span> <span class="fu">ks.test</span>(<span class="fu">scale</span>(Q1),<span class="st">&quot;pnorm&quot;</span>)<span class="sc">$</span>p.value,</span>
+<span id="cb195-19"><a href="intro.html#cb195-19" tabindex="-1"></a>    </span>
+<span id="cb195-20"><a href="intro.html#cb195-20" tabindex="-1"></a>    <span class="at">est_sw =</span> <span class="fu">shapiro.test</span>(Q1)<span class="sc">$</span>statistic,</span>
+<span id="cb195-21"><a href="intro.html#cb195-21" tabindex="-1"></a>    </span>
+<span id="cb195-22"><a href="intro.html#cb195-22" tabindex="-1"></a>    <span class="at">p_sw =</span> <span class="fu">shapiro.test</span>(Q1)<span class="sc">$</span>p.value,</span>
+<span id="cb195-23"><a href="intro.html#cb195-23" tabindex="-1"></a>    </span>
+<span id="cb195-24"><a href="intro.html#cb195-24" tabindex="-1"></a>    <span class="at">est_l =</span> <span class="fu">lillie.test</span>(Q1)<span class="sc">$</span>statistic,</span>
+<span id="cb195-25"><a href="intro.html#cb195-25" tabindex="-1"></a>    </span>
+<span id="cb195-26"><a href="intro.html#cb195-26" tabindex="-1"></a>    <span class="at">p_l =</span> <span class="fu">lillie.test</span>(Q1)<span class="sc">$</span>p.value)</span></code></pre></div>
+<pre><code>## Warning: There were 4 warnings in `summarise()`.
+## The first warning was:
+## ℹ In argument: `est_ks = ks.test(scale(Q1), &quot;pnorm&quot;)$statistic`.
+## ℹ In group 1: `Experimento = &quot;Post-test&quot;`.
+## Caused by warning in `ks.test.default()`:
+## ! ties should not be present for the one-sample Kolmogorov-Smirnov test
+## ℹ Run `dplyr::last_dplyr_warnings()` to see the 3 remaining warnings.</code></pre>
+<div class="sourceCode" id="cb197"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb197-1"><a href="intro.html#cb197-1" tabindex="-1"></a>pretestq1 <span class="ot">&lt;-</span> dataQ <span class="sc">|&gt;</span> </span>
+<span id="cb197-2"><a href="intro.html#cb197-2" tabindex="-1"></a>  <span class="fu">select</span>(Experimento,Q1) <span class="sc">|&gt;</span> </span>
+<span id="cb197-3"><a href="intro.html#cb197-3" tabindex="-1"></a>  <span class="fu">filter</span>(Experimento<span class="sc">==</span> <span class="st">&quot;Pretest&quot;</span>)</span>
+<span id="cb197-4"><a href="intro.html#cb197-4" tabindex="-1"></a></span>
+<span id="cb197-5"><a href="intro.html#cb197-5" tabindex="-1"></a>postestq1 <span class="ot">&lt;-</span> dataQ <span class="sc">|&gt;</span> </span>
+<span id="cb197-6"><a href="intro.html#cb197-6" tabindex="-1"></a>  <span class="fu">select</span>(Experimento,Q1) <span class="sc">|&gt;</span> </span>
+<span id="cb197-7"><a href="intro.html#cb197-7" tabindex="-1"></a>  <span class="fu">filter</span>(Experimento<span class="sc">==</span> <span class="st">&quot;Post-test&quot;</span>)</span>
+<span id="cb197-8"><a href="intro.html#cb197-8" tabindex="-1"></a></span>
+<span id="cb197-9"><a href="intro.html#cb197-9" tabindex="-1"></a><span class="fu">wilcox.test</span>(<span class="at">x=</span> pretestq1<span class="sc">$</span>Q1,<span class="at">y=</span> postestq1<span class="sc">$</span>Q1,<span class="at">paired=</span><span class="cn">TRUE</span>)</span></code></pre></div>
+<pre><code>## 
+##  Wilcoxon signed rank exact test
+## 
+## data:  pretestq1$Q1 and postestq1$Q1
+## V = 0, p-value = 1.421e-14
+## alternative hypothesis: true location shift is not equal to 0</code></pre>
+<div class="sourceCode" id="cb199"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb199-1"><a href="intro.html#cb199-1" tabindex="-1"></a><span class="co">#La prueba de rango del signo de wilcoxon </span></span>
+<span id="cb199-2"><a href="intro.html#cb199-2" tabindex="-1"></a><span class="co">#con una confianza del 95% podemos decir que hay diferencias estadisticmaente</span></span>
+<span id="cb199-3"><a href="intro.html#cb199-3" tabindex="-1"></a><span class="co">#significativas de la pregunta de percepcion q1 segun el experimento (v=0, pvalor &lt;0.001)</span></span>
+<span id="cb199-4"><a href="intro.html#cb199-4" tabindex="-1"></a></span>
+<span id="cb199-5"><a href="intro.html#cb199-5" tabindex="-1"></a><span class="co">#Determinar tamaño del efecto con pruebas no parametricas</span></span>
+<span id="cb199-6"><a href="intro.html#cb199-6" tabindex="-1"></a>dataQ <span class="sc">|&gt;</span> </span>
+<span id="cb199-7"><a href="intro.html#cb199-7" tabindex="-1"></a>  <span class="fu">wilcox_effsize</span>(Q1 <span class="sc">~</span> Experimento, <span class="at">paired=</span><span class="cn">TRUE</span>)</span></code></pre></div>
+<pre><code>## # A tibble: 1 × 7
+##   .y.   group1    group2  effsize    n1    n2 magnitude
+## * &lt;chr&gt; &lt;chr&gt;     &lt;chr&gt;     &lt;dbl&gt; &lt;int&gt; &lt;int&gt; &lt;ord&gt;    
+## 1 Q1    Post-test Pretest   0.879    49    49 large</code></pre>
+<div class="sourceCode" id="cb201"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb201-1"><a href="intro.html#cb201-1" tabindex="-1"></a><span class="co"># El tamaño del efecto de la diferencia fue estadisticamente sifnificativa</span></span>
+<span id="cb201-2"><a href="intro.html#cb201-2" tabindex="-1"></a></span>
+<span id="cb201-3"><a href="intro.html#cb201-3" tabindex="-1"></a></span>
+<span id="cb201-4"><a href="intro.html#cb201-4" tabindex="-1"></a><span class="co">#hacer ejercicio de diferencia de proporciones completo</span></span>
+<span id="cb201-5"><a href="intro.html#cb201-5" tabindex="-1"></a></span>
+<span id="cb201-6"><a href="intro.html#cb201-6" tabindex="-1"></a><span class="co"># ANOVA de un factor ------------</span></span>
+<span id="cb201-7"><a href="intro.html#cb201-7" tabindex="-1"></a></span>
+<span id="cb201-8"><a href="intro.html#cb201-8" tabindex="-1"></a></span>
+<span id="cb201-9"><a href="intro.html#cb201-9" tabindex="-1"></a>df <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">Empleados =</span> <span class="fu">c</span>(<span class="fl">0.66</span>, <span class="fl">0.63</span>, <span class="fl">0.65</span>, <span class="fl">0.69</span>, <span class="fl">0.44</span>, <span class="fl">0.63</span>, <span class="fl">0.61</span>, <span class="fl">0.42</span>, <span class="fl">0.59</span>, <span class="fl">0.46</span>),</span>
+<span id="cb201-10"><a href="intro.html#cb201-10" tabindex="-1"></a>                 <span class="at">Agricultores =</span> <span class="fu">c</span>(<span class="fl">0.65</span>, <span class="fl">0.60</span>, <span class="fl">0.69</span>, <span class="fl">0.73</span>, <span class="fl">0.52</span>, <span class="fl">0.85</span>, <span class="fl">0.81</span>, <span class="cn">NA</span>, <span class="cn">NA</span>, <span class="cn">NA</span>),</span>
+<span id="cb201-11"><a href="intro.html#cb201-11" tabindex="-1"></a>                 <span class="at">NoExpuestos =</span> <span class="fu">c</span>(<span class="fl">0.93</span>, <span class="fl">0.99</span>, <span class="fl">0.96</span>, <span class="fl">0.74</span>, <span class="fl">0.81</span>, <span class="fl">0.93</span>, <span class="fl">0.63</span>, <span class="fl">0.68</span>, <span class="fl">0.99</span>, <span class="cn">NA</span>))</span>
+<span id="cb201-12"><a href="intro.html#cb201-12" tabindex="-1"></a></span>
+<span id="cb201-13"><a href="intro.html#cb201-13" tabindex="-1"></a>empleados <span class="ot">&lt;-</span> <span class="fu">na.omit</span>(df<span class="sc">$</span>Empleados)</span>
+<span id="cb201-14"><a href="intro.html#cb201-14" tabindex="-1"></a>agricultores<span class="ot">&lt;-</span> <span class="fu">na.omit</span>(df<span class="sc">$</span>Agricultores)</span>
+<span id="cb201-15"><a href="intro.html#cb201-15" tabindex="-1"></a>no_expuestos<span class="ot">&lt;-</span> <span class="fu">na.omit</span>(df<span class="sc">$</span>NoExpuestos)</span>
+<span id="cb201-16"><a href="intro.html#cb201-16" tabindex="-1"></a></span>
+<span id="cb201-17"><a href="intro.html#cb201-17" tabindex="-1"></a><span class="co"># Hallemos el tamaño de cada tratamiento</span></span>
+<span id="cb201-18"><a href="intro.html#cb201-18" tabindex="-1"></a>n1 <span class="ot">&lt;-</span> <span class="fu">length</span>(empleados)</span>
+<span id="cb201-19"><a href="intro.html#cb201-19" tabindex="-1"></a>n2<span class="ot">&lt;-</span> <span class="fu">length</span>(agricultores)</span>
+<span id="cb201-20"><a href="intro.html#cb201-20" tabindex="-1"></a>n3<span class="ot">&lt;-</span> <span class="fu">length</span>(no_expuestos)</span>
+<span id="cb201-21"><a href="intro.html#cb201-21" tabindex="-1"></a>N <span class="ot">&lt;-</span> n1<span class="sc">+</span>n2<span class="sc">+</span>n3</span>
+<span id="cb201-22"><a href="intro.html#cb201-22" tabindex="-1"></a>k<span class="ot">&lt;-</span><span class="fu">ncol</span>(df)</span>
+<span id="cb201-23"><a href="intro.html#cb201-23" tabindex="-1"></a></span>
+<span id="cb201-24"><a href="intro.html#cb201-24" tabindex="-1"></a><span class="co"># Hallemos los promedios de los tratamientos</span></span>
+<span id="cb201-25"><a href="intro.html#cb201-25" tabindex="-1"></a>xbar_1<span class="ot">=</span><span class="fu">mean</span>(empleados)</span>
+<span id="cb201-26"><a href="intro.html#cb201-26" tabindex="-1"></a>xbar_2<span class="ot">=</span><span class="fu">mean</span>(agricultores)</span>
+<span id="cb201-27"><a href="intro.html#cb201-27" tabindex="-1"></a>xbar_3<span class="ot">=</span><span class="fu">mean</span>(no_expuestos)</span>
+<span id="cb201-28"><a href="intro.html#cb201-28" tabindex="-1"></a><span class="co"># Hallemos el promedio global</span></span>
+<span id="cb201-29"><a href="intro.html#cb201-29" tabindex="-1"></a>xbar_total <span class="ot">&lt;-</span>  (<span class="fu">sum</span>(empleados)</span>
+<span id="cb201-30"><a href="intro.html#cb201-30" tabindex="-1"></a>                <span class="sc">+</span><span class="fu">sum</span>(agricultores)</span>
+<span id="cb201-31"><a href="intro.html#cb201-31" tabindex="-1"></a>                <span class="sc">+</span><span class="fu">sum</span>(no_expuestos))<span class="sc">/</span>N</span>
+<span id="cb201-32"><a href="intro.html#cb201-32" tabindex="-1"></a></span>
+<span id="cb201-33"><a href="intro.html#cb201-33" tabindex="-1"></a><span class="co"># Hallemos el SST</span></span>
+<span id="cb201-34"><a href="intro.html#cb201-34" tabindex="-1"></a></span>
+<span id="cb201-35"><a href="intro.html#cb201-35" tabindex="-1"></a>sst<span class="ot">=</span> <span class="fu">sum</span>((empleados<span class="sc">-</span>xbar_total)<span class="sc">**</span><span class="dv">2</span>)<span class="sc">+</span></span>
+<span id="cb201-36"><a href="intro.html#cb201-36" tabindex="-1"></a>  <span class="fu">sum</span>((agricultores<span class="sc">-</span>xbar_total)<span class="sc">**</span><span class="dv">2</span>)<span class="sc">+</span></span>
+<span id="cb201-37"><a href="intro.html#cb201-37" tabindex="-1"></a>  <span class="fu">sum</span>((no_expuestos<span class="sc">-</span>xbar_total)<span class="sc">**</span><span class="dv">2</span>)</span>
+<span id="cb201-38"><a href="intro.html#cb201-38" tabindex="-1"></a></span>
+<span id="cb201-39"><a href="intro.html#cb201-39" tabindex="-1"></a><span class="co">#Hallemos el ssa</span></span>
+<span id="cb201-40"><a href="intro.html#cb201-40" tabindex="-1"></a>ssa<span class="ot">=</span>n1<span class="sc">*</span>(xbar_1<span class="sc">-</span>xbar_total)<span class="sc">**</span><span class="dv">2</span><span class="sc">+</span></span>
+<span id="cb201-41"><a href="intro.html#cb201-41" tabindex="-1"></a>  n2<span class="sc">*</span>(xbar_2<span class="sc">-</span>xbar_total)<span class="sc">**</span><span class="dv">2</span><span class="sc">+</span></span>
+<span id="cb201-42"><a href="intro.html#cb201-42" tabindex="-1"></a>  n3<span class="sc">*</span>(xbar_3<span class="sc">-</span>xbar_total)<span class="sc">**</span><span class="dv">2</span></span>
+<span id="cb201-43"><a href="intro.html#cb201-43" tabindex="-1"></a></span>
+<span id="cb201-44"><a href="intro.html#cb201-44" tabindex="-1"></a><span class="co">#hallemos el sse</span></span>
+<span id="cb201-45"><a href="intro.html#cb201-45" tabindex="-1"></a>sse<span class="ot">=</span>sst<span class="sc">-</span>ssa</span>
+<span id="cb201-46"><a href="intro.html#cb201-46" tabindex="-1"></a><span class="co">#MSE Y MSA</span></span>
+<span id="cb201-47"><a href="intro.html#cb201-47" tabindex="-1"></a>msa<span class="ot">=</span>ssa<span class="sc">/</span>(k<span class="dv">-1</span>)</span>
+<span id="cb201-48"><a href="intro.html#cb201-48" tabindex="-1"></a>mse<span class="ot">=</span>sse<span class="sc">/</span>(N<span class="sc">-</span>k)</span>
+<span id="cb201-49"><a href="intro.html#cb201-49" tabindex="-1"></a><span class="co"># Estadistico F</span></span>
+<span id="cb201-50"><a href="intro.html#cb201-50" tabindex="-1"></a>f<span class="ot">=</span>msa<span class="sc">/</span>mse</span>
+<span id="cb201-51"><a href="intro.html#cb201-51" tabindex="-1"></a></span>
+<span id="cb201-52"><a href="intro.html#cb201-52" tabindex="-1"></a><span class="co"># F tabulado</span></span>
+<span id="cb201-53"><a href="intro.html#cb201-53" tabindex="-1"></a>alpha<span class="ot">=</span><span class="fl">0.05</span></span>
+<span id="cb201-54"><a href="intro.html#cb201-54" tabindex="-1"></a>v1<span class="ot">=</span>k<span class="dv">-1</span></span>
+<span id="cb201-55"><a href="intro.html#cb201-55" tabindex="-1"></a>v2<span class="ot">=</span>N<span class="sc">-</span>k</span>
+<span id="cb201-56"><a href="intro.html#cb201-56" tabindex="-1"></a>f_critico<span class="ot">=</span><span class="fu">qf</span>(<span class="dv">1</span><span class="sc">-</span>alpha,<span class="at">df1 =</span> v1,<span class="at">df2 =</span> v2)</span>
+<span id="cb201-57"><a href="intro.html#cb201-57" tabindex="-1"></a><span class="co"># Al fcritico ser menor que el F se rechaza </span></span>
+<span id="cb201-58"><a href="intro.html#cb201-58" tabindex="-1"></a><span class="co">#la hipotesis nula y por tanto hay diferencia en por lo menos 1 grupo</span></span>
+<span id="cb201-59"><a href="intro.html#cb201-59" tabindex="-1"></a></span>
+<span id="cb201-60"><a href="intro.html#cb201-60" tabindex="-1"></a><span class="co">#pvalor</span></span>
+<span id="cb201-61"><a href="intro.html#cb201-61" tabindex="-1"></a>pvalor<span class="ot">=</span><span class="dv">1</span><span class="sc">-</span><span class="fu">pf</span>(f,v1,v2)</span>
+<span id="cb201-62"><a href="intro.html#cb201-62" tabindex="-1"></a><span class="co"># el pvalor es &lt;0.05 por lo que se rechaza la hipotesis </span></span>
+<span id="cb201-63"><a href="intro.html#cb201-63" tabindex="-1"></a><span class="co">#nula y hay por lo menos un grupo es diferente</span></span></code></pre></div>
 
 </div>
 </div>
